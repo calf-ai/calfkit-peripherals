@@ -7,10 +7,14 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from pydantic_ai.common_tools.web_fetch import (
-    WebFetchLocalTool,
-    web_fetch_tool,
-)
+from calfkit_pydantic_web_fetch._vendor.common_tools.web_fetch import WebFetchLocalTool
+from calfkit_pydantic_web_fetch.results import FetchedBinary, WebFetchError
+
+# Patch target for the engine's `safe_download` symbol (calfkit port: repointed from
+# `pydantic_ai.common_tools.web_fetch`). The engine still receives an `httpx.Response`-shaped
+# object — the §5 streaming restructure lives inside `safe_download`, which now returns a
+# detached, body-loaded `httpx.Response` (so `.text`/`.content`/`.headers` read as before).
+_SAFE_DOWNLOAD = 'calfkit_pydantic_web_fetch._vendor.common_tools.web_fetch.safe_download'
 
 pytestmark = [pytest.mark.anyio]
 
@@ -32,7 +36,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response(html)
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -49,7 +53,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response(html)
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -63,7 +67,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response(html)
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -78,7 +82,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response(html)
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -92,7 +96,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response(html)
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -112,7 +116,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://api.example.com/data')
@@ -132,7 +136,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://api.example.com/data')
@@ -150,7 +154,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com/file.txt')
@@ -169,7 +173,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -184,7 +188,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response(html)
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=50, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -203,7 +207,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -222,7 +226,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com/feed.xml')
@@ -242,7 +246,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -253,9 +257,7 @@ class TestWebFetchLocalTool:
         assert '<h1>' not in result['content']
 
     async def test_binary_content_type(self):
-        """Binary content types return BinaryContent."""
-        from pydantic_ai.messages import BinaryContent
-
+        """Binary content types return the neutral FetchedBinary (calfkit port §6)."""
         pdf_bytes = b'%PDF-1.4 fake content'
         mock_response = httpx.Response(
             200,
@@ -265,12 +267,12 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com/doc.pdf')
 
-        assert isinstance(result, BinaryContent)
+        assert isinstance(result, FetchedBinary)
         assert result.data == pdf_bytes
         assert result.media_type == 'application/pdf'
 
@@ -285,7 +287,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ) as mock_dl:
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=True, timeout=60)
             await tool('http://localhost:8080')
@@ -299,42 +301,34 @@ class TestWebFetchLocalTool:
             blocked_domains=None,
         )
 
-    async def test_safe_download_error_raises_model_retry(self):
-        """Errors from safe_download are converted to ModelRetry."""
-        from pydantic_ai.exceptions import ModelRetry
-
+    async def test_safe_download_error_raises_web_fetch_error(self):
+        """Errors from safe_download are converted to WebFetchError (was ModelRetry)."""
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download',
+            _SAFE_DOWNLOAD,
             new_callable=AsyncMock,
             side_effect=ValueError('DNS resolution failed'),
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
-            with pytest.raises(ModelRetry, match='Failed to fetch'):
+            with pytest.raises(WebFetchError, match='Failed to fetch'):
                 await tool('https://nonexistent.invalid')
 
-    async def test_http_error_raises_model_retry(self):
-        """HTTP errors are converted to ModelRetry."""
-        import httpx
-
-        from pydantic_ai.exceptions import ModelRetry
-
+    async def test_http_error_raises_web_fetch_error(self):
+        """HTTP errors are converted to WebFetchError (was ModelRetry)."""
         request = httpx.Request('GET', 'https://example.com')
         response = httpx.Response(404, request=request)
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download',
+            _SAFE_DOWNLOAD,
             new_callable=AsyncMock,
             side_effect=httpx.HTTPStatusError('Not Found', request=request, response=response),
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
-            with pytest.raises(ModelRetry, match='Failed to fetch'):
+            with pytest.raises(WebFetchError, match='Failed to fetch'):
                 await tool('https://example.com/missing')
 
-    async def test_invalid_url_raises_model_retry(self):
-        """URL without valid protocol raises ModelRetry."""
-        from pydantic_ai.exceptions import ModelRetry
-
+    async def test_invalid_url_raises_web_fetch_error(self):
+        """URL without valid protocol raises WebFetchError (was ModelRetry)."""
         tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
-        with pytest.raises(ModelRetry, match='Failed to fetch'):
+        with pytest.raises(WebFetchError, match='Failed to fetch'):
             await tool('not-a-url')
 
     async def test_allowed_domains_permits(self):
@@ -342,7 +336,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response('<html><body>ok</body></html>')
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ) as mock_dl:
             tool = WebFetchLocalTool(
                 max_content_length=None, allow_local_urls=False, timeout=30, allowed_domains=['example.com']
@@ -354,33 +348,29 @@ class TestWebFetchLocalTool:
         assert mock_dl.call_args[1]['allowed_domains'] == ['example.com']
 
     async def test_allowed_domains_blocks(self):
-        """Non-allowed domain raises ModelRetry (domain check enforced by safe_download)."""
-        from pydantic_ai.exceptions import ModelRetry
-
+        """Non-allowed domain raises WebFetchError (domain check enforced by safe_download)."""
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download',
+            _SAFE_DOWNLOAD,
             new_callable=AsyncMock,
             side_effect=ValueError("Domain 'evil.com' is not in the allowed domains list."),
         ):
             tool = WebFetchLocalTool(
                 max_content_length=None, allow_local_urls=False, timeout=30, allowed_domains=['example.com']
             )
-            with pytest.raises(ModelRetry, match='Failed to fetch'):
+            with pytest.raises(WebFetchError, match='Failed to fetch'):
                 await tool('https://evil.com/page')
 
     async def test_blocked_domains_blocks(self):
-        """Blocked domain raises ModelRetry (domain check enforced by safe_download)."""
-        from pydantic_ai.exceptions import ModelRetry
-
+        """Blocked domain raises WebFetchError (domain check enforced by safe_download)."""
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download',
+            _SAFE_DOWNLOAD,
             new_callable=AsyncMock,
             side_effect=ValueError("Domain 'evil.com' is blocked."),
         ):
             tool = WebFetchLocalTool(
                 max_content_length=None, allow_local_urls=False, timeout=30, blocked_domains=['evil.com']
             )
-            with pytest.raises(ModelRetry, match='Failed to fetch'):
+            with pytest.raises(WebFetchError, match='Failed to fetch'):
                 await tool('https://evil.com/page')
 
     async def test_blocked_domains_permits(self):
@@ -388,7 +378,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response('<html><body>ok</body></html>')
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ) as mock_dl:
             tool = WebFetchLocalTool(
                 max_content_length=None, allow_local_urls=False, timeout=30, blocked_domains=['evil.com']
@@ -410,7 +400,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com/page')
@@ -430,7 +420,7 @@ class TestWebFetchLocalTool:
         )
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ):
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             result = await tool('https://example.com')
@@ -443,7 +433,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response('<html><body>ok</body></html>')
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ) as mock_dl:
             tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
             await tool('https://example.com')
@@ -456,7 +446,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response('<html><body>ok</body></html>')
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ) as mock_dl:
             tool = WebFetchLocalTool(
                 max_content_length=None,
@@ -475,7 +465,7 @@ class TestWebFetchLocalTool:
         mock_response = _html_response('<html><body>ok</body></html>')
 
         with patch(
-            'pydantic_ai.common_tools.web_fetch.safe_download', new_callable=AsyncMock, return_value=mock_response
+            _SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response
         ) as mock_dl:
             tool = WebFetchLocalTool(
                 max_content_length=None,
@@ -488,14 +478,63 @@ class TestWebFetchLocalTool:
         call_headers = mock_dl.call_args[1]['headers']
         assert call_headers['Accept'] == 'text/html'
 
+    async def test_non_utf8_charset_decoded_correctly(self):
+        """Non-UTF-8 bodies decode via the response charset, not blind UTF-8 (§5 charset).
 
-class TestWebFetchToolFactory:
-    def test_creates_tool(self):
-        """web_fetch_tool() returns a Tool with correct name."""
-        tool = web_fetch_tool()
-        assert tool.name == 'web_fetch'
+        The engine reads `response.text`, which `safe_download` resolves from the Content-Type
+        charset. A latin-1 body (`é` = 0xE9, invalid UTF-8) must come through as `é`, not a
+        replacement char or a UnicodeDecodeError.
+        """
+        body = '<html><body><p>Café résumé</p></body></html>'.encode('latin-1')
+        mock_response = httpx.Response(
+            200,
+            content=body,
+            headers={'content-type': 'text/html; charset=latin-1'},
+            request=httpx.Request('GET', 'https://example.com'),
+        )
 
-    def test_custom_parameters(self):
-        """web_fetch_tool() accepts custom parameters."""
-        tool = web_fetch_tool(max_content_length=10_000, timeout=60, allow_local_urls=True)
-        assert tool.name == 'web_fetch'
+        with patch(_SAFE_DOWNLOAD, new_callable=AsyncMock, return_value=mock_response):
+            tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
+            result = await tool('https://example.com')
+
+        assert isinstance(result, dict)
+        assert 'Café résumé' in result['content']
+
+    async def test_oversize_response_raises_web_fetch_error(self):
+        """A ResponseTooLargeError from the guard surfaces as WebFetchError (§5 byte cap).
+
+        The streaming byte cap lives in `safe_download`; when it aborts, the engine maps the
+        typed error to `WebFetchError` (which the node maps to `error:`).
+        """
+        from calfkit_pydantic_web_fetch._vendor._ssrf import ResponseTooLargeError
+
+        with patch(
+            _SAFE_DOWNLOAD,
+            new_callable=AsyncMock,
+            side_effect=ResponseTooLargeError('Response body exceeds the maximum of 5242880 bytes.'),
+        ):
+            tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
+            with pytest.raises(WebFetchError, match='Failed to fetch'):
+                await tool('https://example.com/big')
+
+    async def test_byte_cap_fires_before_markdownify(self):
+        """When the guard aborts oversize, markdownify is NEVER reached (§5: cap before decode).
+
+        The byte cap is enforced inside `safe_download` (streaming), so an oversize body raises
+        before the engine touches `markdownify`/`response.text`. We assert `md` is not called.
+        """
+        from calfkit_pydantic_web_fetch._vendor._ssrf import ResponseTooLargeError
+
+        with (
+            patch(
+                _SAFE_DOWNLOAD,
+                new_callable=AsyncMock,
+                side_effect=ResponseTooLargeError('Response body exceeds the maximum of 5242880 bytes.'),
+            ),
+            patch('calfkit_pydantic_web_fetch._vendor.common_tools.web_fetch.md') as mock_md,
+        ):
+            tool = WebFetchLocalTool(max_content_length=None, allow_local_urls=False, timeout=30)
+            with pytest.raises(WebFetchError):
+                await tool('https://example.com/big')
+
+        mock_md.assert_not_called()

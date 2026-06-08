@@ -1,7 +1,18 @@
-"""Web fetch tool for Pydantic AI agents.
+"""Web fetch engine (vendored from pydantic-ai, trimmed to its reusable core).
 
-Fetches web pages and converts their content to markdown using SSRF-protected
-HTTP requests and the `markdownify` library for HTML-to-markdown conversion.
+Fetches web pages via the SSRF-protected guard and converts the body to markdown using the
+`markdownify` library, with content-type gating, `<title>` extraction, JSON fencing, a 50k
+char cap, and `Accept: text/markdown`.
+
+calfkit port (§5 / §6):
+  * `safe_download` repointed to the vendored sibling `_ssrf` module.
+  * `is_text_like_media_type` inlined (was `pydantic_ai._utils`).
+  * the 4 pydantic glue symbols dropped (`web_fetch_tool()`, `Tool`, `ModelRetry`,
+    `BinaryContent`) → recorded in `NODE.md`. Binary content is returned as the neutral
+    first-party `FetchedBinary`; fetch failures raise the neutral `WebFetchError` (mapped to
+    the node's `error:` reply).
+  * the streaming byte cap lives in the guard (`_ssrf.safe_download`); this engine's 50k char
+    cap still runs downstream on the *decoded* text.
 """
 
 from __future__ import annotations
@@ -9,27 +20,38 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import KW_ONLY, dataclass, field
+from typing import TypedDict
 
 import httpx
-from typing_extensions import Any, TypedDict
 
-from pydantic_ai._ssrf import safe_download
-from pydantic_ai._utils import is_text_like_media_type
-from pydantic_ai.exceptions import ModelRetry
-from pydantic_ai.messages import BinaryContent
-from pydantic_ai.tools import Tool
+from calfkit_pydantic_web_fetch._vendor._ssrf import ResponseTooLargeError, safe_download
+from calfkit_pydantic_web_fetch.results import FetchedBinary, WebFetchError
 
 try:
     from markdownify import markdownify as md
-except ImportError as _import_error:
-    raise ImportError(
-        'Please install `markdownify` to use the web fetch tool, '
-        'you can use the `web-fetch` optional group — `pip install "pydantic-ai-slim[web-fetch]"`'
-    ) from _import_error
+except ImportError as _import_error:  # pragma: no cover
+    raise ImportError('Please install `markdownify` to use the web fetch engine.') from _import_error
 
-__all__ = ('WebFetchResult', 'web_fetch_tool')
+__all__ = ('WebFetchLocalTool', 'WebFetchResult')
 
 _EXCESSIVE_NEWLINES_RE = re.compile(r'\n{3,}')
+
+
+def is_text_like_media_type(media_type: str) -> bool:
+    """Check if a media type represents text-like content.
+
+    Returns True for `text/*`, JSON, XML, YAML, and their structured syntax suffixes.
+
+    Inlined verbatim from `pydantic_ai._utils` (calfkit port, §4).
+    """
+    return (
+        media_type.startswith('text/')
+        or media_type == 'application/json'
+        or media_type.endswith('+json')
+        or media_type == 'application/xml'
+        or media_type.endswith('+xml')
+        or media_type in ('application/x-yaml', 'application/yaml')
+    )
 
 
 class WebFetchResult(TypedDict):
@@ -59,28 +81,28 @@ class WebFetchLocalTool:
     """Request timeout in seconds."""
 
     allowed_domains: list[str] | None = field(default=None)
-    """Only fetch from these domains (exact hostname match). Raises `ModelRetry` on violation."""
+    """Only fetch from these domains (exact hostname match). Raises `WebFetchError` on violation."""
 
     blocked_domains: list[str] | None = field(default=None)
-    """Never fetch from these domains (exact hostname match). Raises `ModelRetry` on violation."""
+    """Never fetch from these domains (exact hostname match). Raises `WebFetchError` on violation."""
 
     headers: dict[str, str] | None = field(default=None)
     """Additional HTTP headers to include in the request."""
 
-    async def __call__(self, url: str) -> WebFetchResult | BinaryContent:
+    async def __call__(self, url: str) -> WebFetchResult | FetchedBinary:
         """Fetches the content of a web page at the given URL and returns it as markdown.
 
-        For textual content (HTML, JSON, plain text), returns a
-        [`WebFetchResult`][pydantic_ai.common_tools.web_fetch.WebFetchResult].
-        For binary content (PDF, images, etc.), returns a
-        [`BinaryContent`][pydantic_ai.messages.BinaryContent] so the model can
-        process it natively.
+        For textual content (HTML, JSON, plain text), returns a `WebFetchResult`. For binary
+        content (PDF, images, etc.), returns a neutral `FetchedBinary` (§6).
 
         Args:
             url: The URL to fetch.
 
         Returns:
             The fetched page content.
+
+        Raises:
+            WebFetchError: If the fetch fails (SSRF-blocked, HTTP error, bad URL, oversize, ...).
         """
         request_headers = {'Accept': 'text/markdown, text/html;q=0.9, */*;q=0.8'}
         if self.headers:
@@ -95,8 +117,8 @@ class WebFetchLocalTool:
                 allowed_domains=self.allowed_domains,
                 blocked_domains=self.blocked_domains,
             )
-        except (ValueError, httpx.HTTPStatusError, httpx.RequestError) as e:
-            raise ModelRetry(f'Failed to fetch {url}: {e}') from e
+        except (ValueError, ResponseTooLargeError, httpx.HTTPStatusError, httpx.RequestError) as e:
+            raise WebFetchError(f'Failed to fetch {url}: {e}') from e
 
         media_type = response.headers.get('content-type', '')
         media_type = media_type.split(';')[0].strip().lower()
@@ -120,7 +142,7 @@ class WebFetchLocalTool:
             else:
                 content = text
         else:
-            return BinaryContent(data=response.content, media_type=media_type or 'application/octet-stream')
+            return FetchedBinary(data=response.content, media_type=media_type or 'application/octet-stream')
 
         content = _clean_whitespace(content)
 
@@ -142,46 +164,3 @@ def _extract_title(html: str) -> str:
 def _clean_whitespace(text: str) -> str:
     """Collapse runs of 3+ newlines into 2 newlines."""
     return _EXCESSIVE_NEWLINES_RE.sub('\n\n', text).strip()
-
-
-def web_fetch_tool(
-    *,
-    max_content_length: int | None = 50_000,
-    allow_local_urls: bool = False,
-    timeout: int = 30,
-    allowed_domains: list[str] | None = None,
-    blocked_domains: list[str] | None = None,
-    headers: dict[str, str] | None = None,
-) -> Tool[Any]:
-    """Creates a web fetch tool that fetches URLs and converts content to markdown.
-
-    This tool uses SSRF protection via `pydantic_ai._ssrf.safe_download`.
-
-    By default, sends `Accept: text/markdown` to request markdown directly from
-    servers that support it (e.g. Cloudflare, Vercel, Mintlify). This reduces
-    token usage and improves content quality. Falls back to HTML-to-markdown
-    conversion when the server doesn't support markdown responses.
-
-    Args:
-        max_content_length: Maximum character length of returned content.
-            Defaults to 50,000 (~12,500 tokens). Use `None` for no limit.
-        allow_local_urls: Whether to allow fetching from private/local IP addresses.
-            Defaults to `False`.
-        timeout: Request timeout in seconds. Defaults to 30.
-        allowed_domains: Only fetch from these domains (exact hostname match). Raises `ModelRetry` on violation.
-        blocked_domains: Never fetch from these domains (exact hostname match). Raises `ModelRetry` on violation.
-        headers: Additional HTTP headers to include in requests.
-            Overrides the default `Accept: text/markdown` header if `Accept` is provided.
-    """
-    return Tool[Any](
-        WebFetchLocalTool(
-            max_content_length=max_content_length,
-            allow_local_urls=allow_local_urls,
-            timeout=timeout,
-            allowed_domains=allowed_domains,
-            blocked_domains=blocked_domains,
-            headers=headers,
-        ).__call__,
-        name='web_fetch',
-        description='Fetches the content of a web page at the given URL and returns it as markdown or binary content.',
-    )
