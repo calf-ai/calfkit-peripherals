@@ -36,7 +36,7 @@ import logging
 import threading
 from typing import Dict, List, Optional
 
-from agent.web_search_provider import WebSearchProvider
+from calfkit_hermes._vendor.agent.web_search_provider import WebSearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ def get_provider(name: str) -> Optional[WebSearchProvider]:
 def _read_config_key(*path: str) -> Optional[str]:
     """Resolve a dotted config key from ``config.yaml``. Returns None on miss."""
     try:
-        from hermes_cli.config import load_config
+        from calfkit_hermes._shims.hermes_cli.config import load_config
 
         cfg = load_config()
         cur = cfg

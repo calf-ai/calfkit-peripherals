@@ -27,7 +27,7 @@ import logging
 import os
 from typing import Any, Dict, List
 
-from agent.web_search_provider import WebSearchProvider
+from calfkit_hermes._vendor.agent.web_search_provider import WebSearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ class TavilyWebSearchProvider(WebSearchProvider):
     def search(self, query: str, limit: int = 5) -> Dict[str, Any]:
         """Execute a Tavily search."""
         try:
-            from tools.interrupt import is_interrupted
+            from calfkit_hermes._vendor.tools.interrupt import is_interrupted
 
             if is_interrupted():
                 return {"success": False, "error": "Interrupted"}
@@ -178,7 +178,7 @@ class TavilyWebSearchProvider(WebSearchProvider):
         list-of-results shape; per-URL failures become items with ``error``.
         """
         try:
-            from tools.interrupt import is_interrupted
+            from calfkit_hermes._vendor.tools.interrupt import is_interrupted
 
             if is_interrupted():
                 return [
