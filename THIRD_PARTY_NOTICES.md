@@ -19,9 +19,19 @@ See `docs/project-structure.md` and the `open-source-vendoring-best-practices` s
 
 ## Components
 
-_None merged to `main` yet._ The first port (hermes-agent, MIT © Nous Research) is in
-progress; its entry — including the upstream MIT notice and secondary-origin
-attributions (opencode, nearai/ironclaw, free-code) — lands with that component.
+### hermes-agent  (MIT)
+- Upstream: https://github.com/NousResearch/hermes-agent @ `5a36f76a00cc448948856a5c1b52710aafec264e`, retrieved 2026-06-07
+- License: MIT — © 2025 Nous Research  (full text: `components/hermes-agent/LICENSE`)
+- Vendored under: `components/hermes-agent/src/calfkit_hermes/_vendor/`
+- Tools: shell (terminal, process, execute_code), files (read/write/patch/search), web_search + web_extract (provider system: ddgs / brave-free / searxng / tavily)
+- Secondary origins: opencode (MIT), nearai/ironclaw (elect-MIT), free-code (MIT) — see `components/hermes-agent/METADATA.yaml`
+
+### pydantic-web-fetch  (MIT)
+- Upstream: https://github.com/pydantic/pydantic-ai @ `1b42945de65b2816fed3cffa371671a2ac759241` (tag `v1.106.0`), retrieved 2026-06-08
+- License: MIT — © Pydantic Services Inc.  (full text: `components/pydantic-web-fetch/LICENSE`)
+- Vendored under: `components/pydantic-web-fetch/src/calfkit_pydantic_web_fetch/_vendor/`
+- Tools: web_fetch (SSRF-safe URL → markdown / neutral binary)
+- Secondary origins: none found (H3 verified — `_ssrf.py` IP/cloud-metadata tables are independently authored from primary RFCs; see `components/pydantic-web-fetch/METADATA.yaml`)
 
 <!-- Per-component entry template:
 ### <source-name>  (<SPDX>)
