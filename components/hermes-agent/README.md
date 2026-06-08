@@ -1,11 +1,13 @@
 # calfkit-hermes
 
-calfkit node component vendoring the **shell + file toolset** from
+calfkit node component vendoring the **shell, file, web, and todo toolsets** from
 [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) (MIT).
 
 Exposes (over the calfkit Kafka contract — see `NODE.md`, Stage D):
 - **shell:** `terminal`, `process`, `execute_code` (Programmatic Tool Calling)
 - **files:** `read_file`, `write_file`, `patch`, `search_files`
+- **web_search / web_extract:** query → ranked links / URLs → content (provider system: ddgs / brave-free / searxng / tavily)
+- **todo:** `todo` — per-session task list (id-keyed; merge/replace; durable Store deferred — Faust table)
 
 ## Provenance & license
 
@@ -16,7 +18,7 @@ Exposes (over the calfkit Kafka contract — see `NODE.md`, Stage D):
 
 ## Structure
 
-- `src/calfkit_hermes/_vendor/` — the 42-file vendored upstream tree (import-rewritten).
+- `src/calfkit_hermes/_vendor/` — the vendored upstream tree (import-rewritten).
 - `src/calfkit_hermes/_shims/` — thin replacements for hermes' app-runtime edges.
 - `src/calfkit_hermes/node/` — calfkit Kafka adapter + tool wrappers (Stage D — deferred).
 - `tests/` — vendored upstream tests (regression) + adapter tests.

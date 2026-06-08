@@ -32,5 +32,13 @@ web-brave     = ["httpx"]
 web-searxng   = ["httpx"]
 web-tavily    = ["httpx"]
 
+[dependency-groups]
+# Dev/test deps — NOT shipped to consumers (the git+subdirectory install reads only
+# [project]/optional-dependencies, never dependency-groups). Installed by `uv run`/`uv sync`
+# by default, so `uv run pytest` uses the project's own pytest instead of falling through to
+# a global one. ddgs + httpx are included so the web-provider tests run under a plain
+# `uv run pytest` (they mirror the web-search/web-* extras).
+dev = ["pytest>=8", "ddgs", "httpx"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/calfkit_hermes"]

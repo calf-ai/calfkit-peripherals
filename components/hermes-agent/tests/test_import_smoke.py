@@ -10,6 +10,7 @@ SRC = Path(__file__).resolve().parent.parent / "src"
 EXPECTED_TOOLS = {
     "terminal", "process", "execute_code",          # shell
     "read_file", "write_file", "patch", "search_files",  # files
+    "todo",                                          # todo (per-session task list)
 }
 
 
@@ -44,3 +45,16 @@ def test_all_vendored_modules_import():
     assert not failures, "modules failed to import:\n" + "\n".join(
         f"  {m}: {e}" for m, e in failures.items()
     )
+
+
+def test_todo_dispatch_without_store_returns_clean_error():
+    """Vendor-only contract: `todo` registers, but with no Store wired the
+    dispatched tool returns a clean error instead of crashing. The durable Store
+    (Faust table) is deferred — see docs/design/todo-tool-port.md.
+    """
+    import json
+    from calfkit_hermes._vendor.tools.registry import registry, discover_builtin_tools
+
+    discover_builtin_tools()
+    result = json.loads(registry.dispatch("todo", {}))
+    assert result["error"] == "TodoStore not initialized"

@@ -23,7 +23,7 @@ See `docs/project-structure.md` and the `open-source-vendoring-best-practices` s
 - Upstream: https://github.com/NousResearch/hermes-agent @ `5a36f76a00cc448948856a5c1b52710aafec264e`, retrieved 2026-06-07
 - License: MIT — © 2025 Nous Research  (full text: `components/hermes-agent/LICENSE`)
 - Vendored under: `components/hermes-agent/src/calfkit_hermes/_vendor/`
-- Tools: shell (terminal, process, execute_code), files (read/write/patch/search), web_search + web_extract (provider system: ddgs / brave-free / searxng / tavily)
+- Tools: shell (terminal, process, execute_code), files (read/write/patch/search), web_search + web_extract (provider system: ddgs / brave-free / searxng / tavily), todo (per-session task list)
 - Secondary origins: opencode (MIT), nearai/ironclaw (elect-MIT), free-code (MIT) — see `components/hermes-agent/METADATA.yaml`
 
 ### pydantic-web-fetch  (MIT)
