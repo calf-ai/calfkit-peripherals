@@ -1,6 +1,6 @@
 # Design: Web tools (`web_fetch` / `web_search`) — vendoring & calfkit integration
 
-**Status:** Draft (grill complete; pre deep-review). Sources confirmed + closures verified against upstream.
+**Status:** Draft (grill complete; **deep-review round 1 done — spec amended below, see §7**). Two simplifications pending user decision (glue-as-reference, config resolver). Sources confirmed + closures verified against upstream at the pinned versions.
 **Date:** 2026-06-08
 **Owners:** Ryan
 **Decisions:** [ADR-0001](../adr/0001-vendor-pydantic-ai-web-fetch-self-contained.md) (glue-as-reference), [ADR-0002](../adr/0002-per-vendor-config-now-unify-later.md) (per-vendor config).
@@ -72,7 +72,9 @@ reconnect it against calfkit's pydantic-ai runtime without re-fetching upstream.
 `_ssrf.py` and the engine reach into pydantic-ai private modules whose home files are
 huge but whose logic is tiny; **inline** (~30 LOC total), do **not** import the home
 modules:
-- `run_in_executor` (`_utils.py`) → ~5-line wrapper over `asyncio.to_thread`.
+- `run_in_executor` (`_utils.py`) → **re-implement** the DNS thread-offload over
+  `asyncio.to_thread` (functional equivalent — the real upstream impl uses ContextVars +
+  anyio, so this is NOT a verbatim lift). Only `resolve_hostname` needs it.
 - `create_async_http_client` + `get_user_agent` (`models/__init__.py`, 1900+ LOC — the
   whole agent framework) → ~3-line `httpx.AsyncClient(...)` factory with our own UA.
 - `is_text_like_media_type` (`_utils.py`) → ~10-line leaf, copy verbatim.
@@ -80,13 +82,24 @@ modules:
 Dropped (framework glue, kept as reference): `ModelRetry`, `BinaryContent`, `Tool`,
 `web_fetch_tool()`.
 
-### 3.4 Streaming byte cap — the one hand-roll (patch, not feature)
-`safe_download` buffers the full body (`client.get()`) → the 50k **char** cap runs only
-*after* the whole body is in memory + parsed → a multi-GB / chunked / no-`Content-Length`
-response is a **memory-DoS** on the single-worker loop. No Python upstream bundles SSRF +
-streaming. **Patch the vendored guard** (`patches/`): swap the final request to
-`client.stream()` + `iter_bytes()` with a running byte total that aborts past ~5–10 MB,
-**before** decode/markdownify. ~10–15 LOC, marked modification.
+### 3.4 Streaming byte cap — guard/engine restructure (NOT a localized patch) ⚠️ amended §7-C1
+`safe_download` buffers the full body (`await client.get(...)` *inside* the
+`async with create_async_http_client(...)` block) and returns an `httpx.Response`; the
+engine reads `.text`/`.content` **after** that block has closed. So the 50k **char** cap
+runs only after the whole body is in memory + parsed → a multi-GB / chunked /
+no-`Content-Length` response is a **memory-DoS** on the single-worker loop. No Python
+upstream bundles SSRF + streaming.
+
+You **cannot** fix this with a swap-`get`-for-`stream` patch that still returns a
+`Response`: once the client context exits, a streamed body is unreadable
+(`ResponseNotRead`). The byte-cap must move **inside** the guard — a `safe_stream` variant
+(or a flag) that, on the **final non-redirect hop**, consumes `iter_bytes()` with a running
+total, **aborts past a named `MAX_FETCH_BYTES` constant** (pick one value, e.g. 5 MB per
+OpenCode), and returns `(media_type, capped_bytes, status)` rather than a `Response` —
+**before** decode/markdownify. This restructures the guard↔engine boundary and **rewrites
+~23 `client.get` mock sites + the buffer/close regression test** in `test_ssrf.py` (see §7).
+Realistic budget: ~40–60 LOC + a real test rewrite, recorded in `patches/`. Still done now
+(deferring ships a known memory-DoS) — just scoped honestly as a restructure, not a patch.
 
 ### 3.5 Binary representation
 Live engine returns binary media as a neutral `bytes + media_type` (small dataclass),
@@ -126,14 +139,27 @@ deep Nous-gateway tail) is **NOT** vendored — the node adapter replaces its di
 | brave-free | search | ✅ extra | `httpx` |
 | searxng | search | ✅ extra | `httpx` |
 | **tavily** | search + **extract** | ✅ (clean extract backend) | `tools.interrupt` *(vendored)* |
-| exa | search + extract | optional | lift `_wt._exa_client` (1 small factory fn) |
-| parallel | search + extract | optional | lift `_wt._parallel_client(+async)` (2 fns) |
-| firecrawl | search + extract | ❌ **defer** | 10 helpers, mostly **Nous managed-gateway** infra |
+| exa | search + extract | ❌ **defer (fast-follow)** | reads/writes a shared mutable client **cache slot on `web_tools`** (not vendored) → `ImportError` as-is; MODERATE — see §7-C3 |
+| parallel | search + extract | ❌ **defer (fast-follow)** | same cache-slot coupling (`_parallel_client` + async) |
+| firecrawl | search + extract | ❌ defer | 10 helpers, mostly **Nous managed-gateway** infra |
 | xai | search | ❌ defer | `tools.xai_http` (own tail) + config |
 
-Rationale for the defers: firecrawl/xai are the only providers where "take it whole" drags
-infrastructure we will never run (Nous gateway / xai_http), and "lift it clean" is exactly
-the precision-cutting we avoid. Everything clean-to-take is taken.
+**exa/parallel decision (was "optional"): DEFER.** Deep review (§7-C3) corrected the coupling
+— it is **not** "lift a factory fn." Each provider does `import tools.web_tools as _wt` and
+reads/writes module-global client **cache slots** (`_wt._exa_client` …) that live in the
+1347-LOC `web_tools.py` we are deliberately not vendoring; the rewriter would map the import
+to a non-existent module → runtime `ImportError`. Making them work needs relocating the cache
+slots onto each provider (a marked local edit) + a rewriter rule = MODERATE. Per the "if not a
+lot more work, keep" rule, that crosses the line → ship them in a fast-follow.
+
+firecrawl/xai defer because "take it whole" drags infra we will never run (Nous gateway /
+xai_http) and "lift it clean" is exactly the precision-cutting we avoid.
+
+**Vendor path + scaffolding (§7-C4):** vendor only each provider's `provider.py` under a
+`tools.*`-covered path (e.g. `_vendor/tools/web_providers/<name>.py`); **drop** the
+`plugins/web/<name>/__init__.py` + `plugin.yaml` (their `register(ctx)` hook needs an
+un-vendored `PluginContext`; the node calls `register_provider()` directly). Add the rewriter
+rule for the chosen path if it isn't already under `tools.*`.
 
 ### 4.3 Offload
 The provider `search()` path is **synchronous/inline** upstream; the node consume-loop must
@@ -155,9 +181,73 @@ Across both tracks, first-party code is minimal: the ~30 LOC of inlined leaf hel
 Everything else is vendored prod-grade code.
 
 ## 6. Open items / next steps
-1. **Deep review** (per CLAUDE.md): adversarial review of this design + the verified
-   closures before implementing; converge to no criticals.
-2. Confirm exa/parallel in-or-out for the first cut (optional extract backends).
-3. Implement per `project-structure.md` §"How to add a new port" + TDD the `node/` adapters.
-4. Append both components to `THIRD_PARTY_NOTICES.md`; record provenance in each
-   `METADATA.yaml`.
+1. **User decision on two simplifications** (§7-M1, §7-M2) before scaffolding.
+2. Resolve component naming (§7-L: dir `pydantic-web` ↔ pkg `calfkit_pydantic_web`).
+3. (Optional) round-2 confirmation review of the amended spec → converge to no criticals.
+4. Implement per `project-structure.md` §"How to add a new port" + TDD the `node/` adapters.
+5. Append both components to `THIRD_PARTY_NOTICES.md`; record provenance + CVE lineage +
+   secondary-origin check in each `METADATA.yaml`.
+
+## 7. Deep-review findings (round 1, 3 adversarial opus agents) — spec amended
+
+Verified against upstream **at the pinned versions** (pydantic-ai `v1.106.0`; hermes
+`5a36f76`). Both pins confirmed valid — all target files present at tag/SHA; licenses clean
+(pydantic MIT © Pydantic Services Inc.; hermes MIT © Nous Research).
+
+**CRITICAL (amended into the body above):**
+- **C1 — streaming cap is a guard/engine restructure, not a ~10-LOC patch** (body read inside
+  a closed client context; can't return a streamed `Response`). ~40–60 LOC + test rewrite.
+  → §3.4 rewritten.
+- **C2 — the streaming change rewrites ~23 `client.get` mock sites + the buffer/close
+  regression test** in `test_ssrf.py`. So `test_ssrf.py` is a **port-and-rewrite, not a
+  verbatim vendor.** Also: the test monkeypatches `_ssrf.run_in_executor` /
+  `create_async_http_client` by module-string — keep those module-level patchable names and
+  repoint the strings after inlining.
+- **C3 — exa/parallel coupling was inverted; vendoring as-is = `ImportError`.** They depend on
+  a shared mutable client cache in the un-vendored `web_tools.py`. → DEFERRED (§4.2).
+- **C4 — rewriter has no `plugins` rule.** Vendor providers under a `tools.*` path; drop
+  plugin scaffolding (`__init__.py`/`plugin.yaml`). → §4.2.
+
+**HIGH:**
+- **H1 — `run_in_executor` is not a verbatim lift** (ContextVars + anyio). Re-implement over
+  `asyncio.to_thread`. → §3.3 fixed.
+- **H2 — vendor path + dropped plugin scaffolding must be stated** (un-vendored `PluginContext`
+  edge otherwise). → §4.2.
+- **H3 — provenance hygiene:** record the GHSA-2jrp/CVE lineage in `_ssrf.py`'s provenance
+  header + `METADATA.yaml` (not only in the test), AND explicitly **verify whether `_ssrf.py`
+  adapts its IP/cloud-metadata tables from a third project** (secondary-origin) before
+  asserting MIT-only. Gate added to §3.1/§6.
+
+**MEDIUM — confirmed / minor:**
+- Engine LOC: reusable core is ~95–100 of the 187-LOC file (not "~115").
+- Registry resolves standalone, BUT with the `{}` config stub, selection is
+  **availability-walk-only** until a real config path is wired (relevant to M2).
+- Keep vendoring the content engine (hand-rolling it grows first-party surface against the
+  repo's hand-roll-aversion); but mark `_ssrf.py` as the load-bearing, re-sync-critical piece
+  and the engine as faithful-but-replaceable.
+- Streaming threshold: pin as a named constant (one value), assert it fires before
+  decode+markdownify.
+
+**MEDIUM — TWO SIMPLIFICATIONS PENDING USER DECISION (revise earlier grill calls):**
+- **M1 — glue-as-reference whole files may be cruft.** Since calfkit *runs* pydantic-ai, the
+  4-symbol glue (`web_fetch_tool`/`Tool`/`ModelRetry`/`BinaryContent`) is re-derivable from
+  calfkit's live runtime at port time; a frozen `reference/upstream/web_fetch.py` snapshot
+  rots (not imported, not tested). **Proposed:** replace the reference files with a ≤10-line
+  "Port note" recording the 4 symbols + the `bytes+media_type → BinaryContent` re-wrap shape;
+  the METADATA SHA + upstream path is the re-sync pointer. *(Revises the earlier "keep glue as
+  reference files" call — the doc note serves the same stated goal more durably.)*
+- **M2 — vendoring the config-selection layer (ADR-0002) may be throwaway.** Once the node
+  registers providers explicitly, selection is `os.environ[...]` → the registry's in-memory
+  `Dict` lookup; `_resolve`/`get_active_*`/`_read_config_key` encode hermes-CLI semantics
+  calfkit never runs (and are inert under the `{}` stub). **Proposed:** keep the in-memory
+  registry (real value), drop the resolver, select by env in the node (~10 LOC). *(Revises
+  ADR-0002; still "per-vendor config now, unify later" — just first-party glue, not vendored
+  hermes-CLI config.)*
+
+**LOW:** component naming dir↔pkg mismatch (→ `pydantic-web`); `NODE.md` should state returned
+bodies are **untrusted by contract** (calfcord owns wrapping — boundary affirmed); record both
+the `v1.106.0` tag AND its resolved SHA in METADATA.
+
+**Convergence:** no contradictory findings across the 3 agents; the Tier-0 cut (registry +
+url_safety + ddgs/brave/searxng/tavily) is confirmed sound, zero-new-shim, and shippable. A
+round-2 review (optional) should confirm the amended §3.4 + §4.2 + the M1/M2 resolutions.
