@@ -1,0 +1,43 @@
+# Provenance for the vendored hermes-agent shell + file toolset.
+# (Chromium README.chromium-style schema; see ../../docs/project-structure.md)
+name: hermes-agent
+homepage: https://github.com/NousResearch/hermes-agent
+revision: 5a36f76a00cc448948856a5c1b52710aafec264e
+retrieved: 2026-06-07
+license: MIT
+license_file: LICENSE
+
+# calfkit tools this component exposes (over the Kafka contract — see NODE.md):
+#   shell:  terminal, process, execute_code
+#   files:  read_file, write_file, patch, search_files
+provides: [shell, files]
+
+# Vendored file set = 42 .py files (the bounded transitive closure with the upstream's
+# app-runtime packages treated as a shim boundary). The authoritative list is the
+# "verbatim vendor" git commit (`git show --stat`) and design doc §3. High level:
+files:
+  - "tools/environments/*.py        # backends: local, docker, ssh, modal, managed_modal, daytona, singularity, file_sync, modal_utils"
+  - "tools/terminal_tool.py, tools/process_registry.py, tools/code_execution_tool.py"
+  - "tools/file_tools.py, tools/file_state.py, tools/file_operations.py, tools/fuzzy_match.py, tools/patch_parser.py"
+  - "tools/approval.py, tools/tirith_security.py, tools/path_security.py, tools/registry.py, tools/lazy_deps.py"
+  - "tools/interrupt.py, tools/ansi_strip.py, tools/env_passthrough.py, tools/thread_context.py"
+  - "tools/tool_backend_helpers.py, tools/tool_output_limits.py, tools/credential_files.py, tools/binary_extensions.py, tools/budget_config.py, tools/managed_tool_gateway.py, tools/__init__.py"
+  - "agent/file_safety.py, agent/redact.py, agent/async_utils.py, agent/i18n.py, agent/skill_utils.py"
+  - "hermes_constants.py, utils.py"
+  - "locales/*.yaml"
+
+# Upstreams that hermes-agent itself ported code from (preserve their "Ported from" headers):
+secondary_origins:
+  - {name: opencode,        license: MIT,                                   files: ["tools/fuzzy_match.py", "tools/tool_output_limits.py"]}
+  - {name: nearai/ironclaw, license: "MIT (elected; dual MIT/Apache-2.0 upstream)", files: ["agent/redact.py"]}
+  - {name: free-code,       license: MIT,                                   files: ["tools/binary_extensions.py"]}
+
+# Deliberately NOT vendored:
+cut:
+  - "tools/kanban_tools.py  # drags in hermes_cli.kanban_db (~7.6k-LOC SQLite); a todo tool, not shell/file"
+
+local_modifications:
+  - "Mechanical import rewrite: tools.* / agent.* / hermes_constants / utils -> calfkit_hermes._vendor.* (most-specific-prefix-wins); app-runtime edges (hermes_cli.* / gateway.* / model_tools / agent.auxiliary_client / agent.lsp.*) -> calfkit_hermes._shims.*"
+  - "Authored empty _vendor/agent/__init__.py (upstream's imports jiter_preload, not vendored)"
+  - "Manual fix-ups: registry.py importlib f-string root; agent/i18n.py locales path; code_execution_tool.py __file__ PYTHONPATH; agent/skill_utils.py cut-kanban branch"
+  - "See ../../docs/design/shell-file-tool-port.md for full rationale + Stage-D (security/multi-tenant) deferral"

@@ -1,0 +1,29 @@
+# calfkit node component vendoring the hermes-agent shell + file toolset (MIT).
+# Installed by calfkit via:
+#   uv add "calfkit-hermes[...] @ git+<repo>#subdirectory=components/hermes-agent"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "calfkit-hermes"
+version = "0.0.0"
+description = "calfkit node component: hermes-agent shell + file toolset (vendored, MIT)"
+requires-python = ">=3.11"          # vendored code uses tomllib (3.11+)
+dependencies = [
+    "psutil",                       # process-tree kill / pid liveness (hard dep upstream)
+    "requests",                     # tools/environments/managed_modal.py imports at module top
+    "PyYAML",                       # utils.py imports yaml at module top
+    "ptyprocess; sys_platform != 'win32'",   # PTY background processes
+]
+
+[project.optional-dependencies]
+# Heavy backend SDKs are lazy-imported by their backend module, so the base install
+# runs the local backend; these extras enable the corresponding remote backends.
+shell-docker  = ["docker"]
+shell-modal   = ["modal"]
+shell-daytona = ["daytona-sdk"]
+# Note: the SSH backend shells out to the system OpenSSH CLI (no paramiko dependency).
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/calfkit_hermes"]
