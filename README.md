@@ -1,4 +1,4 @@
-# calfkit-peripherals
+# 🐮 calfkit-peripherals
 
 Shared monorepo where **calfkit** vendors agent tools ported from many upstream open-source codebases into one place.
 
