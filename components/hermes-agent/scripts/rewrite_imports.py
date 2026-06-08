@@ -1,18 +1,29 @@
 """Rewrite the vendored hermes-agent tree's absolute imports into the component namespace.
 
-Line-oriented (anchored on `from`/`import` statements) so it never touches identifiers
-or strings that merely look like module paths.
+AST-targeted: only the physical lines that contain a real ``import`` / ``from ... import``
+statement are rewritten, so identifiers, comments, and import-looking lines inside
+docstrings/strings are left byte-for-byte. This keeps the _vendor tree's provenance as
+"verbatim + a mechanical import-rewrite".
+
+Mapping:
+  tools.* / agent.* / hermes_constants / utils  ->  calfkit_hermes._vendor.*
+  app-runtime edges (hermes_cli.* / gateway.* / model_tools / agent.auxiliary_client /
+    agent.lsp[.*])                              ->  calfkit_hermes._shims.*
+Relative imports (`from .x`) are left as-is (they stay valid after relocation).
 """
+import ast
 import re
 
 _VENDOR = "calfkit_hermes._vendor"
 _SHIM = "calfkit_hermes._shims"
 _VENDOR_TOPS = ("tools", "agent", "hermes_constants", "utils")
-# App-runtime edges that become shims. Order doesn't matter for correctness here
-# (each is matched as a whole dotted prefix), but the SHIM check runs BEFORE the
-# vendor-tops check so the specific `agent.lsp` / `agent.auxiliary_client` win over
-# the general `agent.*` vendor rule (most-specific-prefix-wins).
+# App-runtime edges that become shims. Shim prefixes are matched BEFORE the vendor-tops
+# check, so the specific `agent.lsp` / `agent.auxiliary_client` win over the general
+# `agent.*` vendor rule.
 _SHIM_PREFIXES = ("agent.auxiliary_client", "agent.lsp", "hermes_cli", "gateway", "model_tools")
+
+_FROM_RE = re.compile(r"^(\s*from\s+)([A-Za-z_][\w.]*)")
+_IMPORT_RE = re.compile(r"^(\s*import\s+)([A-Za-z_][\w.]*)")
 
 
 def _target(module):
@@ -20,26 +31,47 @@ def _target(module):
     for prefix in _SHIM_PREFIXES:
         if module == prefix or module.startswith(prefix + "."):
             return f"{_SHIM}.{module}"
-    first = module.split(".", 1)[0]
-    if first in _VENDOR_TOPS:
+    if module.split(".", 1)[0] in _VENDOR_TOPS:
         return f"{_VENDOR}.{module}"
     return None
 
 
-def rewrite_imports(source):
+def _rewrite_line(line):
     def repl(m):
         target = _target(m.group(2))
-        if target is None:
-            return m.group(0)
-        return m.group(1) + target
+        return m.group(1) + target if target else m.group(0)
 
-    # `from MODULE import ...` and `import MODULE [as ...]`. Both anchored at the start
-    # of a (possibly indented) line so identifiers/strings that merely contain a dotted
-    # name are never touched. Leading-dot relative imports don't match `[A-Za-z_]` and
-    # are left as-is (they stay valid after relocation).
-    source = re.sub(r"^(\s*from\s+)([A-Za-z_][\w.]*)", repl, source, flags=re.M)
-    source = re.sub(r"^(\s*import\s+)([A-Za-z_][\w.]*)", repl, source, flags=re.M)
-    return source
+    line = _FROM_RE.sub(repl, line)
+    return _IMPORT_RE.sub(repl, line)
+
+
+def rewrite_imports(source):
+    """Rewrite absolute imports of vendored / app-runtime modules into the namespace.
+
+    Only real import statements (located via the AST) are touched.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return source  # leave files we can't parse untouched
+
+    import_lines = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            if node.level:  # relative import — stays valid after relocation
+                continue
+            import_lines.add(node.lineno)
+        elif isinstance(node, ast.Import):
+            import_lines.add(node.lineno)
+    if not import_lines:
+        return source
+
+    lines = source.splitlines(keepends=True)
+    for lineno in import_lines:
+        idx = lineno - 1
+        if 0 <= idx < len(lines):
+            lines[idx] = _rewrite_line(lines[idx])
+    return "".join(lines)
 
 
 def _apply_to_tree(root):

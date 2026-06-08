@@ -9,6 +9,7 @@
   ``dispatch`` (lookup + async-bridge + error-sanitize), scoped to this node's tools.
 """
 import asyncio
+import concurrent.futures
 import re
 
 # --- _sanitize_tool_error (constants + body copied verbatim from upstream) ---------
@@ -47,8 +48,6 @@ def _run_async(coro):
     except RuntimeError:
         running = None
     if running and running.is_running():
-        import concurrent.futures
-
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             return pool.submit(lambda: asyncio.run(coro)).result()
     return asyncio.run(coro)

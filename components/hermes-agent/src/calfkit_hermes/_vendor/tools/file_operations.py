@@ -9,8 +9,8 @@ The key insight is that all file operations can be expressed as shell commands,
 so we wrap the terminal backend's execute() interface to provide a unified file API.
 
 Usage:
-    from calfkit_hermes._vendor.tools.file_operations import ShellFileOperations
-    from calfkit_hermes._vendor.tools.terminal_tool import _active_environments
+    from tools.file_operations import ShellFileOperations
+    from tools.terminal_tool import _active_environments
     
     # Get file operations for a terminal environment
     file_ops = ShellFileOperations(terminal_env)

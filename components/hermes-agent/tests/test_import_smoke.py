@@ -1,12 +1,10 @@
 """Import-smoke: the rewritten vendored tree + authored shims must import cleanly,
 and the self-registering tools must actually register into the vendored registry.
 """
-import sys
 from pathlib import Path
 
+# sys.path bootstrap is done once in conftest.py. SRC is kept for the module glob below.
 SRC = Path(__file__).resolve().parent.parent / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
 
 
 EXPECTED_TOOLS = {

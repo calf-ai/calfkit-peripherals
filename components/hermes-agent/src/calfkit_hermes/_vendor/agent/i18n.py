@@ -14,7 +14,7 @@ crashes the agent.
 
 Usage::
 
-    from calfkit_hermes._vendor.agent.i18n import t
+    from agent.i18n import t
     print(t("approval.choose_long"))                       # current lang
     print(t("gateway.draining", count=3))                  # {count} formatted
     print(t("approval.choose_long", lang="zh"))            # explicit override

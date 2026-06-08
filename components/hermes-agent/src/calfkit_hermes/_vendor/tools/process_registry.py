@@ -14,7 +14,7 @@ runs on the host machine unless TERMINAL_ENV=local. For Docker, Singularity,
 Modal, Daytona, and SSH backends, the command runs inside the sandbox.
 
 Usage:
-    from calfkit_hermes._vendor.tools.process_registry import process_registry
+    from tools.process_registry import process_registry
 
     # Spawn a background process (called from terminal_tool)
     session = process_registry.spawn(env, "pytest -v", task_id="task_123")

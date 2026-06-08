@@ -53,3 +53,39 @@ def test_app_runtime_edges_go_to_shims_most_specific_wins():
         "from calfkit_hermes._shims.hermes_cli.config import cfg_get\n"
     )
     assert rewrite_imports(src) == expected
+
+
+def test_does_not_rewrite_imports_inside_docstrings():
+    # An import-looking line inside a string/docstring is NOT a real import and
+    # must be left byte-for-byte (preserves the "verbatim" provenance of _vendor).
+    src = (
+        '"""Usage:\n'
+        "    from tools.web_tools import fetch\n"
+        '"""\n'
+        "from tools.real import thing\n"
+    )
+    out = rewrite_imports(src)
+    assert "    from tools.web_tools import fetch\n" in out  # docstring untouched
+    assert "from calfkit_hermes._vendor.tools.real import thing\n" in out
+
+
+def test_rewrites_import_with_as_alias():
+    src = "import hermes_constants as hc\n"
+    assert rewrite_imports(src) == "import calfkit_hermes._vendor.hermes_constants as hc\n"
+
+
+def test_leaves_relative_imports_unchanged():
+    src = "from .terminal_tool import check\nfrom ..agent import x\n"
+    assert rewrite_imports(src) == src
+
+
+def test_rewrites_module_in_multiline_paren_import():
+    src = "from tools.file_operations import (\n    a,\n    b,\n)\n"
+    expected = "from calfkit_hermes._vendor.tools.file_operations import (\n    a,\n    b,\n)\n"
+    assert rewrite_imports(src) == expected
+
+
+def test_rewrite_is_idempotent():
+    src = "from tools.environments.base import X\nfrom agent.lsp import get_service\n"
+    once = rewrite_imports(src)
+    assert rewrite_imports(once) == once

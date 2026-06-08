@@ -1,12 +1,7 @@
 """Functional smoke: the vendored engine actually runs locally — real exit codes and
 snapshot-based statefulness (env vars + cwd persist across calls).
 """
-import sys
-from pathlib import Path
-
-SRC = Path(__file__).resolve().parent.parent / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+import json
 
 
 def _local_env(cwd):
@@ -57,12 +52,17 @@ def test_file_tools_write_read_patch_round_trip(tmp_path):
     _dispatch("write_file", {"path": str(f), "content": "alpha\nbeta\n"}, task)
     assert f.read_text() == "alpha\nbeta\n"
 
-    read = _dispatch("read_file", {"path": str(f)}, task)
-    assert "alpha" in read and "beta" in read
+    read = json.loads(_dispatch("read_file", {"path": str(f)}, task))
+    assert "alpha" in read["content"] and "beta" in read["content"]
 
     _dispatch("patch", {"mode": "replace", "path": str(f),
                         "old_string": "alpha", "new_string": "gamma"}, task)
     assert f.read_text() == "gamma\nbeta\n"
+
+
+def test_process_tool_list_is_empty_on_fresh_session():
+    result = json.loads(_dispatch("process", {"action": "list"}, "smoke-proc"))
+    assert result["processes"] == []
 
 
 def test_execute_code_ptc_bridges_to_a_tool(tmp_path):
