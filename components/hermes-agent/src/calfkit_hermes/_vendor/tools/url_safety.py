@@ -30,7 +30,7 @@ import socket
 import asyncio
 from urllib.parse import urlparse
 
-from utils import is_truthy_value
+from calfkit_hermes._vendor.utils import is_truthy_value
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ def _global_allow_private_urls() -> bool:
 
     # 2. Config file
     try:
-        from hermes_cli.config import read_raw_config
+        from calfkit_hermes._shims.hermes_cli.config import read_raw_config
         cfg = read_raw_config()
         # security.allow_private_urls (preferred)
         sec = cfg.get("security", {})
