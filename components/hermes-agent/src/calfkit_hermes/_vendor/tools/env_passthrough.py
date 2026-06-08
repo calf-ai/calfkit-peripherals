@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 from contextvars import ContextVar
 from typing import Iterable
-from hermes_cli.config import cfg_get
+from calfkit_hermes._shims.hermes_cli.config import cfg_get
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def _is_hermes_provider_credential(name: str) -> bool:
     wrap third-party APIs still work.
     """
     try:
-        from tools.environments.local import _HERMES_PROVIDER_ENV_BLOCKLIST
+        from calfkit_hermes._vendor.tools.environments.local import _HERMES_PROVIDER_ENV_BLOCKLIST
     except Exception:
         return False
     return name in _HERMES_PROVIDER_ENV_BLOCKLIST
@@ -108,7 +108,7 @@ def _load_config_passthrough() -> frozenset[str]:
 
     result: set[str] = set()
     try:
-        from hermes_cli.config import read_raw_config
+        from calfkit_hermes._shims.hermes_cli.config import read_raw_config
         cfg = read_raw_config()
         passthrough = cfg_get(cfg, "terminal", "env_passthrough")
         if isinstance(passthrough, list):

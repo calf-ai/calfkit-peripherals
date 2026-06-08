@@ -14,7 +14,7 @@ crashes the agent.
 
 Usage::
 
-    from agent.i18n import t
+    from calfkit_hermes._vendor.agent.i18n import t
     print(t("approval.choose_long"))                       # current lang
     print(t("gateway.draining", count=3))                  # {count} formatted
     print(t("approval.choose_long", lang="zh"))            # explicit override
@@ -217,7 +217,7 @@ def _config_language_cached() -> str | None:
     (e.g. after the setup wizard).
     """
     try:
-        from hermes_cli.config import load_config
+        from calfkit_hermes._shims.hermes_cli.config import load_config
         cfg = load_config()
         lang = (cfg.get("display") or {}).get("language")
         if lang:

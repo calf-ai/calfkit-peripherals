@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from hermes_constants import get_config_path, get_skills_dir, is_termux
+from calfkit_hermes._vendor.hermes_constants import get_config_path, get_skills_dir, is_termux
 
 logger = logging.getLogger(__name__)
 
@@ -205,14 +205,14 @@ def _detect_environment(env: str) -> bool:
             result = True
         else:
             try:
-                from tools.kanban_tools import _profile_has_kanban_toolset
+                from calfkit_hermes._vendor.tools.kanban_tools import _profile_has_kanban_toolset
 
                 result = bool(_profile_has_kanban_toolset())
             except Exception:
                 result = False
     elif env == "docker":
         try:
-            from hermes_constants import is_container
+            from calfkit_hermes._vendor.hermes_constants import is_container
 
             result = is_container()
         except Exception:
@@ -299,7 +299,7 @@ def get_disabled_skill_names(platform: str | None = None) -> Set[str]:
     if not isinstance(skills_cfg, dict):
         return set()
 
-    from gateway.session_context import get_session_env
+    from calfkit_hermes._shims.gateway.session_context import get_session_env
     resolved_platform = (
         platform
         or os.getenv("HERMES_PLATFORM")
@@ -390,7 +390,7 @@ def get_external_skills_dirs() -> List[Path]:
     if not isinstance(raw_dirs, list):
         return []
 
-    from hermes_constants import get_hermes_home
+    from calfkit_hermes._vendor.hermes_constants import get_hermes_home
 
     hermes_home = get_hermes_home()
     local_skills = get_skills_dir().resolve()

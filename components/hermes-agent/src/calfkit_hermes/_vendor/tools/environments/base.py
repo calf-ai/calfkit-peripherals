@@ -20,8 +20,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import IO, Callable, Protocol
 
-from hermes_constants import get_hermes_home
-from tools.interrupt import is_interrupted
+from calfkit_hermes._vendor.hermes_constants import get_hermes_home
+from calfkit_hermes._vendor.tools.interrupt import is_interrupted
 
 logger = logging.getLogger(__name__)
 
@@ -843,7 +843,7 @@ class BaseEnvironment(ABC):
         # Some callers (spawn_via_env) already produce shell-safe wrappers and
         # pass rewrite_compound_background=False.
         if rewrite_compound_background:
-            from tools.terminal_tool import _rewrite_compound_background
+            from calfkit_hermes._vendor.tools.terminal_tool import _rewrite_compound_background
             exec_command = _rewrite_compound_background(exec_command)
         effective_timeout = timeout or self.timeout
         effective_cwd = cwd or self.cwd
@@ -890,6 +890,6 @@ class BaseEnvironment(ABC):
 
     def _prepare_command(self, command: str) -> tuple[str, str | None]:
         """Transform sudo commands if SUDO_PASSWORD is available."""
-        from tools.terminal_tool import _transform_sudo_command
+        from calfkit_hermes._vendor.tools.terminal_tool import _transform_sudo_command
 
         return _transform_sudo_command(command)

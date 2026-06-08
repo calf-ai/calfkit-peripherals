@@ -14,14 +14,14 @@ import threading
 from pathlib import Path
 from typing import Any, Optional
 
-from hermes_constants import get_hermes_home
-from tools.environments.base import (
+from calfkit_hermes._vendor.hermes_constants import get_hermes_home
+from calfkit_hermes._vendor.tools.environments.base import (
     BaseEnvironment,
     _ThreadedProcessHandle,
     _load_json_store,
     _save_json_store,
 )
-from tools.environments.file_sync import (
+from calfkit_hermes._vendor.tools.environments.file_sync import (
     FileSyncManager,
     iter_sync_files,
     quoted_mkdir_command,
@@ -83,7 +83,7 @@ def _delete_direct_snapshot(task_id: str, snapshot_id: str | None = None) -> Non
 def _ensure_modal_sdk() -> None:
     """Lazy-install modal on demand. Idempotent — fast no-op once installed."""
     try:
-        from tools.lazy_deps import ensure as _lazy_ensure
+        from calfkit_hermes._vendor.tools.lazy_deps import ensure as _lazy_ensure
         _lazy_ensure("terminal.modal", prompt=False)
     except ImportError:
         pass
@@ -144,7 +144,7 @@ class _AsyncWorker:
         self._loop.run_forever()
 
     def run_coroutine(self, coro, timeout=600):
-        from agent.async_utils import safe_schedule_threadsafe
+        from calfkit_hermes._vendor.agent.async_utils import safe_schedule_threadsafe
         if self._loop is None or self._loop.is_closed():
             if asyncio.iscoroutine(coro):
                 coro.close()
@@ -205,7 +205,7 @@ class ModalEnvironment(BaseEnvironment):
 
         cred_mounts = []
         try:
-            from tools.credential_files import (
+            from calfkit_hermes._vendor.tools.credential_files import (
                 get_credential_file_mounts,
                 iter_skills_files,
                 iter_cache_files,

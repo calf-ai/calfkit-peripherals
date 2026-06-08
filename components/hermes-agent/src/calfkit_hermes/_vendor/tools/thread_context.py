@@ -47,7 +47,7 @@ def _callback_api():
     module load, so a top-level import here would risk an import cycle for
     callers that live in ``tools.approval``.
     """
-    from tools.terminal_tool import (
+    from calfkit_hermes._vendor.tools.terminal_tool import (
         _get_approval_callback,
         _get_sudo_password_callback,
         set_approval_callback,

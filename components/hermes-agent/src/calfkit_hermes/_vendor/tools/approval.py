@@ -17,9 +17,9 @@ import threading
 import time
 import unicodedata
 from typing import Optional
-from hermes_cli.config import cfg_get
+from calfkit_hermes._shims.hermes_cli.config import cfg_get
 
-from utils import env_var_enabled, is_truthy_value
+from calfkit_hermes._vendor.utils import env_var_enabled, is_truthy_value
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def _fire_approval_hook(hook_name: str, **kwargs) -> None:
     pre_approval_request, post_approval_response.
     """
     try:
-        from hermes_cli.plugins import invoke_hook
+        from calfkit_hermes._shims.hermes_cli.plugins import invoke_hook
     except Exception:
         # Plugin system not available in this execution context
         # (e.g. bare tool-only imports, minimal test environments).
@@ -116,14 +116,14 @@ def get_current_session_key(default: str = "default") -> str:
     session_key = _approval_session_key.get()
     if session_key:
         return session_key
-    from gateway.session_context import get_session_env
+    from calfkit_hermes._shims.gateway.session_context import get_session_env
     return get_session_env("HERMES_SESSION_KEY", default)
 
 
 def _get_session_platform() -> str:
     """Return the current gateway platform from contextvars/env fallback."""
     try:
-        from gateway.session_context import get_session_env
+        from calfkit_hermes._shims.gateway.session_context import get_session_env
 
         return get_session_env("HERMES_SESSION_PLATFORM", "") or ""
     except Exception:
@@ -529,7 +529,7 @@ def _normalize_command_for_detection(command: str) -> str:
     null bytes, and normalizes Unicode fullwidth characters so that
     obfuscation techniques cannot bypass the pattern-based detection.
     """
-    from tools.ansi_strip import strip_ansi
+    from calfkit_hermes._vendor.tools.ansi_strip import strip_ansi
 
     # Strip all ANSI escape sequences (CSI, OSC, DCS, 8-bit C1, etc.)
     command = strip_ansi(command)
@@ -742,7 +742,7 @@ def load_permanent_allowlist() -> set:
     patterns added via 'always' in a previous session.
     """
     try:
-        from hermes_cli.config import load_config
+        from calfkit_hermes._shims.hermes_cli.config import load_config
         config = load_config()
         patterns = set(config.get("command_allowlist", []) or [])
         if patterns:
@@ -756,7 +756,7 @@ def load_permanent_allowlist() -> set:
 def save_permanent_allowlist(patterns: set):
     """Save permanently allowed command patterns to config."""
     try:
-        from hermes_cli.config import load_config, save_config
+        from calfkit_hermes._shims.hermes_cli.config import load_config, save_config
         config = load_config()
         config["command_allowlist"] = list(patterns)
         save_config(config)
@@ -826,7 +826,7 @@ def prompt_dangerous_approval(command: str, description: str,
     try:
         # Resolve the active UI language once per prompt so we don't re-read
         # config/YAML inside the retry loop below.
-        from agent.i18n import t
+        from calfkit_hermes._vendor.agent.i18n import t
         while True:
             print()
             print(f"  {t('approval.dangerous_header', description=description)}")
@@ -901,7 +901,7 @@ def _normalize_approval_mode(mode) -> str:
 def _get_approval_config() -> dict:
     """Read the approvals config block. Returns a dict with 'mode', 'timeout', etc."""
     try:
-        from hermes_cli.config import load_config
+        from calfkit_hermes._shims.hermes_cli.config import load_config
         config = load_config()
         return config.get("approvals", {}) or {}
     except Exception as e:
@@ -926,7 +926,7 @@ def _get_approval_timeout() -> int:
 def _get_cron_approval_mode() -> str:
     """Read the cron approval mode from config. Returns 'deny' or 'approve'."""
     try:
-        from hermes_cli.config import load_config
+        from calfkit_hermes._shims.hermes_cli.config import load_config
         config = load_config()
         mode = str(cfg_get(config, "approvals", "cron_mode", default="deny")).lower().strip()
         if mode in {"approve", "off", "allow", "yes"}:
@@ -946,7 +946,7 @@ def _smart_approve(command: str, description: str) -> str:
     (openai/codex#13860).
     """
     try:
-        from agent.auxiliary_client import call_llm
+        from calfkit_hermes._shims.agent.auxiliary_client import call_llm
 
         prompt = f"""You are a security reviewer for an AI coding agent. A terminal command was flagged by pattern matching as potentially dangerous.
 
@@ -1181,7 +1181,7 @@ def _await_gateway_decision(session_key: str, notify_cb, approval_data: dict,
         timeout = 300
 
     try:
-        from tools.environments.base import touch_activity_if_due
+        from calfkit_hermes._vendor.tools.environments.base import touch_activity_if_due
     except Exception:  # pragma: no cover
         touch_activity_if_due = None
 
@@ -1289,7 +1289,7 @@ def check_all_command_guards(command: str, env_type: str,
     # Only catch ImportError (module not installed).
     tirith_result = {"action": "allow", "findings": [], "summary": ""}
     try:
-        from tools.tirith_security import check_command_security
+        from calfkit_hermes._vendor.tools.tirith_security import check_command_security
         tirith_result = check_command_security(command)
     except ImportError:
         pass  # tirith module not installed — allow

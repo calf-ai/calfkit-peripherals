@@ -8,15 +8,15 @@ import os
 import threading
 from pathlib import Path
 
-from agent.file_safety import get_read_block_error
-from tools.binary_extensions import has_binary_extension
-from tools.file_operations import (
+from calfkit_hermes._vendor.agent.file_safety import get_read_block_error
+from calfkit_hermes._vendor.tools.binary_extensions import has_binary_extension
+from calfkit_hermes._vendor.tools.file_operations import (
     ShellFileOperations,
     normalize_read_pagination,
     normalize_search_pagination,
 )
-from tools import file_state
-from agent.redact import redact_sensitive_text
+from calfkit_hermes._vendor.tools import file_state
+from calfkit_hermes._vendor.agent.redact import redact_sensitive_text
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def _get_max_read_chars() -> int:
     if _max_read_chars_cached is not None:
         return _max_read_chars_cached
     try:
-        from hermes_cli.config import load_config
+        from calfkit_hermes._shims.hermes_cli.config import load_config
         cfg = load_config()
         val = cfg.get("file_read_max_chars")
         if isinstance(val, (int, float)) and val > 0:
@@ -88,7 +88,7 @@ def _resolve_path(filepath: str, task_id: str = "default") -> Path:
 def _get_live_tracking_cwd(task_id: str = "default") -> str | None:
     """Return the task's live terminal cwd for bookkeeping when available."""
     try:
-        from tools.terminal_tool import _resolve_container_task_id
+        from calfkit_hermes._vendor.tools.terminal_tool import _resolve_container_task_id
         container_key = _resolve_container_task_id(task_id)
     except Exception:
         container_key = task_id
@@ -103,7 +103,7 @@ def _get_live_tracking_cwd(task_id: str = "default") -> str | None:
             return live_cwd
 
     try:
-        from tools.terminal_tool import _active_environments, _env_lock
+        from calfkit_hermes._vendor.tools.terminal_tool import _active_environments, _env_lock
 
         with _env_lock:
             env = _active_environments.get(container_key) or _active_environments.get(task_id)
@@ -249,7 +249,7 @@ def _get_hermes_config_resolved() -> str | None:
         return _hermes_config_resolved
     _hermes_config_resolved_loaded = True
     try:
-        from hermes_cli.config import get_config_path
+        from calfkit_hermes._shims.hermes_cli.config import get_config_path
         _hermes_config_resolved = str(get_config_path().resolve())
     except Exception:
         try:
@@ -292,7 +292,7 @@ def _check_sensitive_path(filepath: str, task_id: str = "default") -> str | None
 def _get_container_mirror_prefix_for_task(task_id: str = "default") -> str | None:
     """Return the container-side Hermes mirror prefix for Docker file tools."""
     try:
-        from tools.terminal_tool import (
+        from calfkit_hermes._vendor.tools.terminal_tool import (
             _active_environments,
             _env_lock,
             _get_env_config,
@@ -351,7 +351,7 @@ def _check_cross_profile_path(filepath: str, task_id: str = "default") -> str | 
     for the detection rules.
     """
     try:
-        from agent.file_safety import (
+        from calfkit_hermes._vendor.agent.file_safety import (
             get_container_mirror_warning,
             get_cross_profile_warning,
             get_sandbox_mirror_warning,
@@ -563,7 +563,7 @@ def _get_file_ops(task_id: str = "default") -> ShellFileOperations:
     parent's container and its cached file_ops. RL/benchmark task_ids with
     a registered env override keep their isolation.
     """
-    from tools.terminal_tool import (
+    from calfkit_hermes._vendor.tools.terminal_tool import (
         _active_environments, _env_lock, _create_environment,
         _get_env_config, _last_activity, _start_cleanup_thread,
         _creation_locks,
@@ -605,7 +605,7 @@ def _get_file_ops(task_id: str = "default") -> ShellFileOperations:
                 terminal_env = None
 
         if terminal_env is None:
-            from tools.terminal_tool import _task_env_overrides
+            from calfkit_hermes._vendor.tools.terminal_tool import _task_env_overrides
 
             config = _get_env_config()
             env_type = config["env_type"]
@@ -1133,7 +1133,7 @@ def patch_tool(mode: str = "replace", path: str = None, old_string: str = None,
         _paths_to_check.append(path)
     if mode == "patch" and patch:
         import re as _re
-        from tools.path_security import has_traversal_component
+        from calfkit_hermes._vendor.tools.path_security import has_traversal_component
         for _m in _re.finditer(r'^\*\*\*\s+(?:Update|Add|Delete)\s+File:\s*(.+)$', patch, _re.MULTILINE):
             v4a_path = _m.group(1).strip()
             # V4A path headers come from patch CONTENT, not the explicit
@@ -1364,12 +1364,12 @@ def search_tool(pattern: str, target: str = "content", path: str = ".",
 # ---------------------------------------------------------------------------
 # Schemas + Registry
 # ---------------------------------------------------------------------------
-from tools.registry import registry, tool_error
+from calfkit_hermes._vendor.tools.registry import registry, tool_error
 
 
 def _check_file_reqs():
     """Lazy wrapper to avoid circular import with tools/__init__.py."""
-    from tools import check_file_requirements
+    from calfkit_hermes._vendor.tools import check_file_requirements
     return check_file_requirements()
 
 READ_FILE_SCHEMA = {

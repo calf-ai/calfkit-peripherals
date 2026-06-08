@@ -40,3 +40,24 @@ def rewrite_imports(source):
     source = re.sub(r"^(\s*from\s+)([A-Za-z_][\w.]*)", repl, source, flags=re.M)
     source = re.sub(r"^(\s*import\s+)([A-Za-z_][\w.]*)", repl, source, flags=re.M)
     return source
+
+
+def _apply_to_tree(root):
+    """Rewrite every .py under *root* in place. Idempotent. Returns count changed."""
+    import pathlib
+
+    changed = 0
+    for path in sorted(pathlib.Path(root).rglob("*.py")):
+        original = path.read_text(encoding="utf-8")
+        rewritten = rewrite_imports(original)
+        if rewritten != original:
+            path.write_text(rewritten, encoding="utf-8")
+            changed += 1
+    return changed
+
+
+if __name__ == "__main__":
+    import sys
+
+    target = sys.argv[1]
+    print(f"rewrote {_apply_to_tree(target)} files under {target}")

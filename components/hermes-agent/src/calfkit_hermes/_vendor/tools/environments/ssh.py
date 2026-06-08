@@ -9,8 +9,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from tools.environments.base import BaseEnvironment, _popen_bash
-from tools.environments.file_sync import (
+from calfkit_hermes._vendor.tools.environments.base import BaseEnvironment, _popen_bash
+from calfkit_hermes._vendor.tools.environments.file_sync import (
     FileSyncManager,
     iter_sync_files,
     quoted_mkdir_command,

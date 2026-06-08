@@ -14,7 +14,7 @@ runs on the host machine unless TERMINAL_ENV=local. For Docker, Singularity,
 Modal, Daytona, and SSH backends, the command runs inside the sandbox.
 
 Usage:
-    from tools.process_registry import process_registry
+    from calfkit_hermes._vendor.tools.process_registry import process_registry
 
     # Spawn a background process (called from terminal_tool)
     session = process_registry.spawn(env, "pytest -v", task_id="task_123")
@@ -41,12 +41,12 @@ import time
 import uuid
 
 _IS_WINDOWS = platform.system() == "Windows"
-from tools.environments.local import _find_shell, _resolve_safe_cwd, _sanitize_subprocess_env
-from hermes_cli._subprocess_compat import windows_hide_flags
+from calfkit_hermes._vendor.tools.environments.local import _find_shell, _resolve_safe_cwd, _sanitize_subprocess_env
+from calfkit_hermes._shims.hermes_cli._subprocess_compat import windows_hide_flags
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from hermes_cli.config import get_hermes_home
+from calfkit_hermes._shims.hermes_cli.config import get_hermes_home
 
 logger = logging.getLogger(__name__)
 
@@ -410,7 +410,7 @@ class ProcessRegistry:
             return False
         # ``os.kill(pid, 0)`` is NOT a no-op on Windows (bpo-14484) — use
         # the cross-platform existence check.
-        from gateway.status import _pid_exists
+        from calfkit_hermes._shims.gateway.status import _pid_exists
         return _pid_exists(pid)
 
     def _refresh_detached_session(self, session: Optional[ProcessSession]) -> Optional[ProcessSession]:
@@ -875,7 +875,7 @@ class ProcessRegistry:
         # this guard, kill_process() and the reader thread can both call
         # _move_to_finished(), producing duplicate [IMPORTANT: ...] messages.
         if was_running and session.notify_on_complete:
-            from tools.ansi_strip import strip_ansi
+            from calfkit_hermes._vendor.tools.ansi_strip import strip_ansi
             output_tail = strip_ansi(session.output_buffer[-2000:]) if session.output_buffer else ""
             self.completion_queue.put({
                 "type": "completion",
@@ -992,7 +992,7 @@ class ProcessRegistry:
 
     def poll(self, session_id: str) -> dict:
         """Check status and get new output for a background process."""
-        from tools.ansi_strip import strip_ansi
+        from calfkit_hermes._vendor.tools.ansi_strip import strip_ansi
 
         session = self.get(session_id)
         if session is None:
@@ -1023,7 +1023,7 @@ class ProcessRegistry:
 
     def read_log(self, session_id: str, offset: int = 0, limit: int = 200) -> dict:
         """Read the full output log with optional pagination by lines."""
-        from tools.ansi_strip import strip_ansi
+        from calfkit_hermes._vendor.tools.ansi_strip import strip_ansi
 
         session = self.get(session_id)
         if session is None:
@@ -1064,8 +1064,8 @@ class ProcessRegistry:
             dict with status ("exited", "timeout", "interrupted", "not_found")
             and output snapshot.
         """
-        from tools.ansi_strip import strip_ansi
-        from tools.interrupt import is_interrupted as _is_interrupted
+        from calfkit_hermes._vendor.tools.ansi_strip import strip_ansi
+        from calfkit_hermes._vendor.tools.interrupt import is_interrupted as _is_interrupted
 
         try:
             default_timeout = int(os.getenv("TERMINAL_TIMEOUT", "180"))
@@ -1399,7 +1399,7 @@ class ProcessRegistry:
                         })
             
             # Atomic write to avoid corruption on crash
-            from utils import atomic_json_write
+            from calfkit_hermes._vendor.utils import atomic_json_write
             atomic_json_write(CHECKPOINT_PATH, entries)
         except Exception as e:
             logger.debug("Failed to write checkpoint file: %s", e, exc_info=True)
@@ -1531,7 +1531,7 @@ def format_process_notification(evt: dict) -> "str | None":
 # ---------------------------------------------------------------------------
 # Registry -- the "process" tool schema + handler
 # ---------------------------------------------------------------------------
-from tools.registry import registry, tool_error
+from calfkit_hermes._vendor.tools.registry import registry, tool_error
 
 PROCESS_SCHEMA = {
     "name": "process",

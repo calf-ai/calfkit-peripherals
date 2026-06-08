@@ -57,8 +57,13 @@ def _module_registers_tools(module_path: Path) -> bool:
 def discover_builtin_tools(tools_dir: Optional[Path] = None) -> List[str]:
     """Import built-in self-registering tool modules and return their module names."""
     tools_path = Path(tools_dir) if tools_dir is not None else Path(__file__).resolve().parent
+    # calfkit vendoring local-mod: import under this package's real root
+    # (`calfkit_hermes._vendor.tools`) rather than the literal `tools.` — the
+    # rewriter cannot fix this dynamic f-string. Without it the registry would
+    # silently import nothing. See METADATA.yaml local_modifications.
+    _pkg_root = __package__ or "tools"
     module_names = [
-        f"tools.{path.stem}"
+        f"{_pkg_root}.{path.stem}"
         for path in sorted(tools_path.glob("*.py"))
         if path.name not in {"__init__.py", "registry.py", "mcp_tool.py"}
         and _module_registers_tools(path)
@@ -399,7 +404,7 @@ class ToolRegistry:
             return json.dumps({"error": f"Unknown tool: {name}"})
         try:
             if entry.is_async:
-                from model_tools import _run_async
+                from calfkit_hermes._shims.model_tools import _run_async
                 return _run_async(entry.handler(args, **kwargs))
             return entry.handler(args, **kwargs)
         except Exception as e:
@@ -409,7 +414,7 @@ class ToolRegistry:
             # See model_tools._sanitize_tool_error for rationale.
             raw = f"Tool execution failed: {type(e).__name__}: {e}"
             try:
-                from model_tools import _sanitize_tool_error
+                from calfkit_hermes._shims.model_tools import _sanitize_tool_error
                 sanitized = _sanitize_tool_error(raw)
             except Exception:
                 sanitized = raw  # defensive: never let the sanitizer block error propagation
@@ -426,7 +431,7 @@ class ToolRegistry:
             return entry.max_result_size_chars
         if default is not None:
             return default
-        from tools.budget_config import DEFAULT_RESULT_SIZE_CHARS
+        from calfkit_hermes._vendor.tools.budget_config import DEFAULT_RESULT_SIZE_CHARS
         return DEFAULT_RESULT_SIZE_CHARS
 
     def get_all_tool_names(self) -> List[str]:

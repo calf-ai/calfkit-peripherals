@@ -9,8 +9,8 @@ The key insight is that all file operations can be expressed as shell commands,
 so we wrap the terminal backend's execute() interface to provide a unified file API.
 
 Usage:
-    from tools.file_operations import ShellFileOperations
-    from tools.terminal_tool import _active_environments
+    from calfkit_hermes._vendor.tools.file_operations import ShellFileOperations
+    from calfkit_hermes._vendor.tools.terminal_tool import _active_environments
     
     # Get file operations for a terminal environment
     file_ops = ShellFileOperations(terminal_env)
@@ -32,9 +32,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from pathlib import Path
-from tools.binary_extensions import BINARY_EXTENSIONS
+from calfkit_hermes._vendor.tools.binary_extensions import BINARY_EXTENSIONS
 
-from agent.file_safety import (
+from calfkit_hermes._vendor.agent.file_safety import (
     build_write_denied_paths,
     build_write_denied_prefixes,
     is_write_denied as _shared_is_write_denied,
@@ -647,7 +647,7 @@ def normalize_read_pagination(offset: Any = DEFAULT_READ_OFFSET,
     The upper bound on ``limit`` comes from ``tool_output.max_lines`` in
     config.yaml (defaults to the module-level ``MAX_LINES`` constant).
     """
-    from tools.tool_output_limits import get_max_lines
+    from calfkit_hermes._vendor.tools.tool_output_limits import get_max_lines
     max_lines = get_max_lines()
     normalized_offset = max(1, _coerce_int(offset, DEFAULT_READ_OFFSET))
     normalized_limit = _coerce_int(limit, DEFAULT_READ_LIMIT)
@@ -783,7 +783,7 @@ class ShellFileOperations(FileOperations):
         (the model hand-counted and was off-by-one, 3/4) — so we keep the
         numbers, just not the padding.
         """
-        from tools.tool_output_limits import get_max_line_length
+        from calfkit_hermes._vendor.tools.tool_output_limits import get_max_line_length
         max_line_length = get_max_line_length()
         lines = content.split('\n')
         numbered = []
@@ -1401,7 +1401,7 @@ class ShellFileOperations(FileOperations):
         content, _ = _strip_bom(content)
 
         # Import and use fuzzy matching
-        from tools.fuzzy_match import fuzzy_find_and_replace
+        from calfkit_hermes._vendor.tools.fuzzy_match import fuzzy_find_and_replace
         
         new_content, match_count, _strategy, error = fuzzy_find_and_replace(
             content, old_string, new_string, replace_all
@@ -1410,7 +1410,7 @@ class ShellFileOperations(FileOperations):
         if error or match_count == 0:
             err_msg = error or f"Could not find match for old_string in {path}"
             try:
-                from tools.fuzzy_match import format_no_match_hint
+                from calfkit_hermes._vendor.tools.fuzzy_match import format_no_match_hint
                 err_msg += format_no_match_hint(err_msg, match_count, old_string, content)
             except Exception:
                 pass
@@ -1507,7 +1507,7 @@ class ShellFileOperations(FileOperations):
             PatchResult with changes made
         """
         # Import patch parser
-        from tools.patch_parser import parse_v4a_patch, apply_v4a_operations
+        from calfkit_hermes._vendor.tools.patch_parser import parse_v4a_patch, apply_v4a_operations
         
         operations, parse_error = parse_v4a_patch(patch_content)
         if parse_error:
@@ -1588,7 +1588,7 @@ class ShellFileOperations(FileOperations):
             # --check`` without a Cargo project).  This is a tooling gap,
             # not a real lint failure — surface it as ``skipped`` so the
             # write doesn't get flagged AND so the LSP tier still runs.
-            from tools.ansi_strip import strip_ansi
+            from calfkit_hermes._vendor.tools.ansi_strip import strip_ansi
             cleaned = strip_ansi(result.stdout).strip()
             # Collapse to a single line — the npx banner is multi-line ASCII.
             first_line = next(
@@ -1706,7 +1706,7 @@ class ShellFileOperations(FileOperations):
             # ``self.env`` may be missing.  No env = no LSP path.
             return False
         try:
-            from tools.environments.local import LocalEnvironment
+            from calfkit_hermes._vendor.tools.environments.local import LocalEnvironment
         except Exception:  # noqa: BLE001
             return False
         return isinstance(env, LocalEnvironment)
@@ -1725,7 +1725,7 @@ class ShellFileOperations(FileOperations):
         if not ext:
             return False
         try:
-            from agent.lsp.servers import SERVERS
+            from calfkit_hermes._shims.agent.lsp.servers import SERVERS
         except Exception:  # noqa: BLE001
             return False
         ext_lower = ext.lower()
@@ -1754,7 +1754,7 @@ class ShellFileOperations(FileOperations):
         if not self._lsp_local_only():
             return False
         try:
-            from agent.lsp import get_service
+            from calfkit_hermes._shims.agent.lsp import get_service
         except Exception:  # noqa: BLE001
             return False
         try:
@@ -1780,7 +1780,7 @@ class ShellFileOperations(FileOperations):
         if not self._lsp_local_only():
             return
         try:
-            from agent.lsp import get_service
+            from calfkit_hermes._shims.agent.lsp import get_service
             svc = get_service()
         except Exception:  # noqa: BLE001
             return
@@ -1821,7 +1821,7 @@ class ShellFileOperations(FileOperations):
         if not self._lsp_local_only():
             return ""
         try:
-            from agent.lsp import get_service
+            from calfkit_hermes._shims.agent.lsp import get_service
         except Exception:  # noqa: BLE001
             return ""
         try:
@@ -1837,7 +1837,7 @@ class ShellFileOperations(FileOperations):
         line_shift = None
         if pre_content is not None and post_content is not None and pre_content != post_content:
             try:
-                from agent.lsp.range_shift import build_line_shift
+                from calfkit_hermes._shims.agent.lsp.range_shift import build_line_shift
                 line_shift = build_line_shift(pre_content, post_content)
             except Exception:  # noqa: BLE001
                 line_shift = None
@@ -1849,7 +1849,7 @@ class ShellFileOperations(FileOperations):
         if not diagnostics:
             return ""
         try:
-            from agent.lsp.reporter import report_for_file, truncate
+            from calfkit_hermes._shims.agent.lsp.reporter import report_for_file, truncate
             block = report_for_file(path, diagnostics)
             if not block:
                 return ""

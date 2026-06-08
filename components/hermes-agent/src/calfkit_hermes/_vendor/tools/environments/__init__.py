@@ -9,6 +9,6 @@ The terminal_tool.py factory (_create_environment) selects the backend
 based on the TERMINAL_ENV configuration.
 """
 
-from tools.environments.base import BaseEnvironment
+from calfkit_hermes._vendor.tools.environments.base import BaseEnvironment
 
 __all__ = ["BaseEnvironment"]

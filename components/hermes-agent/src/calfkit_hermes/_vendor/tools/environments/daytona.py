@@ -12,11 +12,11 @@ import shlex
 import threading
 from pathlib import Path
 
-from tools.environments.base import (
+from calfkit_hermes._vendor.tools.environments.base import (
     BaseEnvironment,
     _ThreadedProcessHandle,
 )
-from tools.environments.file_sync import (
+from calfkit_hermes._vendor.tools.environments.file_sync import (
     FileSyncManager,
     iter_sync_files,
     quoted_mkdir_command,
@@ -52,7 +52,7 @@ class DaytonaEnvironment(BaseEnvironment):
         super().__init__(cwd=cwd, timeout=timeout)
 
         try:
-            from tools.lazy_deps import ensure as _lazy_ensure
+            from calfkit_hermes._vendor.tools.lazy_deps import ensure as _lazy_ensure
             _lazy_ensure("terminal.daytona", prompt=False)
         except ImportError:
             pass
