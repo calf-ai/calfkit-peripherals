@@ -847,6 +847,34 @@ class TestSafeDownload:
         assert response.content == body
         assert response.text == 'Café'
 
+    async def test_content_encoding_header_dropped_on_rebuild(
+        self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock
+    ) -> None:
+        """A `content-encoding` (gzip/br/deflate) response must rebuild WITHOUT re-decoding (§5).
+
+        `aiter_bytes()` yields ALREADY-DECOMPRESSED bytes, so the rebuilt detached response must
+        drop the stale `content-encoding` header — otherwise httpx tries to gunzip the
+        already-plain body on `.text`/`.content` and raises `DecodingError`, failing EVERY
+        gzip/br/deflate-encoded page. Regression test: this fails before the header is stripped.
+        """
+        mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
+
+        # Plain (already-decompressed) HTML body, but the stream headers advertise gzip — exactly
+        # what httpx surfaces after it transparently decodes the wire body.
+        html = b'<html><head><title>Hi</title></head><body>hello</body></html>'
+        response_mock = _StreamResponse(
+            headers={'content-type': 'text/html; charset=utf-8', 'content-encoding': 'gzip'},
+            body=html,
+        )
+        mock_client = _streaming_client(response_mock)
+        mock_ssrf_client.return_value = mock_client
+
+        result = await safe_download('https://example.com/gzipped')
+        # `.text` must read cleanly — NO DecodingError from a double-gunzip.
+        assert result.text == html.decode('utf-8')
+        # The stale content-encoding must not survive onto the detached response.
+        assert 'content-encoding' not in result.headers
+
     async def test_protocol_validation(self) -> None:
         with pytest.raises(ValueError, match='URL protocol "file" is not allowed'):
             await safe_download('file:///etc/passwd')
@@ -987,6 +1015,91 @@ class TestSafeDownload:
 
         with pytest.raises(ValueError, match='not in the allowed domains'):
             await safe_download('https://example.com/page', allowed_domains=['example.com'])
+
+    async def test_cross_origin_redirect_strips_sensitive_headers(
+        self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock
+    ) -> None:
+        """Authorization/Cookie are stripped when a redirect crosses origin (RFC 7235).
+
+        Leaking caller credentials to a redirect's NEW host is a textbook SSRF/credential-exfil
+        vector. The second hop (different host) must carry neither header.
+        """
+        redirect = _StreamResponse(
+            is_redirect=True, status_code=302, headers={'location': 'https://other.com/file.txt'}
+        )
+        final = _StreamResponse(body=b'final content')
+
+        mock_dns.side_effect = [
+            [(2, 1, 6, '', ('93.184.215.14', 0))],
+            [(2, 1, 6, '', ('140.82.114.4', 0))],
+        ]
+        mock_client = _streaming_client([redirect, final])
+        mock_ssrf_client.return_value = mock_client
+
+        await safe_download(
+            'https://example.com/file.txt',
+            headers={'Authorization': 'Bearer x', 'Cookie': 'sid=y'},
+        )
+
+        assert mock_client.stream.call_count == 2
+        second_headers = {k.lower() for k in mock_client.stream.call_args_list[1][1]['headers']}
+        assert 'authorization' not in second_headers
+        assert 'cookie' not in second_headers
+
+    async def test_same_origin_redirect_retains_sensitive_headers(
+        self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock
+    ) -> None:
+        """Authorization/Cookie are RETAINED on a same-host (path-only) redirect.
+
+        Stripping must trigger ONLY on a true origin change; a path-only redirect to the same
+        host must not drop the caller's credentials, or legitimate authed fetches break.
+        """
+        redirect = _StreamResponse(is_redirect=True, status_code=302, headers={'location': '/new-path/file.txt'})
+        final = _StreamResponse(body=b'final content')
+
+        mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
+        mock_client = _streaming_client([redirect, final])
+        mock_ssrf_client.return_value = mock_client
+
+        await safe_download(
+            'https://example.com/old-path/file.txt',
+            headers={'Authorization': 'Bearer x', 'Cookie': 'sid=y'},
+        )
+
+        assert mock_client.stream.call_count == 2
+        second_headers = {k.lower(): v for k, v in mock_client.stream.call_args_list[1][1]['headers'].items()}
+        assert second_headers.get('authorization') == 'Bearer x'
+        assert second_headers.get('cookie') == 'sid=y'
+
+    async def test_protocol_relative_cross_origin_redirect_strips_sensitive_headers(
+        self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock
+    ) -> None:
+        """A protocol-relative (`//other.com/...`) cross-origin redirect also strips credentials.
+
+        The origin-change check resolves the protocol-relative Location to a new host, so the
+        sensitive-header strip must fire here too — not just for fully-absolute redirects.
+        """
+        redirect = _StreamResponse(
+            is_redirect=True, status_code=302, headers={'location': '//other.com/file.txt'}
+        )
+        final = _StreamResponse(body=b'final content')
+
+        mock_dns.side_effect = [
+            [(2, 1, 6, '', ('93.184.215.14', 0))],
+            [(2, 1, 6, '', ('140.82.114.4', 0))],
+        ]
+        mock_client = _streaming_client([redirect, final])
+        mock_ssrf_client.return_value = mock_client
+
+        await safe_download(
+            'https://example.com/file.txt',
+            headers={'Authorization': 'Bearer x', 'Cookie': 'sid=y'},
+        )
+
+        assert mock_client.stream.call_count == 2
+        second_headers = {k.lower() for k in mock_client.stream.call_args_list[1][1]['headers']}
+        assert 'authorization' not in second_headers
+        assert 'cookie' not in second_headers
 
 
 class TestDnsRebindingPrevention:
