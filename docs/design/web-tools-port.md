@@ -32,6 +32,11 @@ hosted-provider twin (Tavily/Exa do the fetching). They are deliberately separat
   defense) — that is an **agent-layer** concern owned by calfcord, not the node tool.
 - *Readability-grade extraction* for `web_fetch` — markdownify matches current behavior;
   hosted `extract` providers cover hard pages.
+- *LLM summarization of `extract` results* — hermes' `web_extract_tool` post-processes
+  provider content through an auxiliary LLM (OpenRouter/Gemini) to compress it; that whole
+  layer lives in the un-vendored `web_tools.py` and is an **agent-layer** concern. The node
+  returns the **raw provider content** (`{url,title,content,raw_content,metadata}`); the
+  agent summarizes if it wants. No auxiliary-LLM dependency in a web node.
 
 ## 2. Repo architecture
 
@@ -131,8 +136,13 @@ Extends the existing component at the **same pin** (`5a36f76a…`, MIT © 2025 N
 
 ### 4.2 Providers — vendor by verified coupling
 Shared helpers `tools.interrupt`, `tools.lazy_deps`, `utils`, `agent.redact` are **already
-vendored** from the shell+file port. `tools/web_tools.py` (1347-LOC in-process dispatcher,
-deep Nous-gateway tail) is **NOT** vendored — the node adapter replaces its dispatch role.
+vendored** from the shell+file port. `tools/web_tools.py` (1347-LOC) is **NOT** vendored —
+it is the in-process dispatcher + the place hermes' `web_search_tool`/`web_extract_tool` are
+defined, and it bundles things we deliberately drop: an **auxiliary-LLM summarization**
+sub-system for extract results, legacy backend resolution (replaced by env-select, §4.4),
+Nous managed-gateway routing, secret-redaction/base64-strip/debug logging. The node adapter
+re-implements only the thin orchestration (register → select → url-safety → call provider →
+return raw content). The client-cache slots it also holds are a test artifact (see §7-C3).
 
 | Provider | Cap | Vendor now? | Coupling beyond ABC |
 |---|---|---|---|
@@ -172,8 +182,8 @@ Registers the shipped providers explicitly at startup; selects the active provid
 env var (e.g. `WEB_SEARCH_BACKEND`) → `registry.get_provider(name)` directly (the vendored
 `config.yaml` resolver stays dormant, not called); for `extract`, runs `async_is_safe_url`
 over the URLs first; offloads sync `search` via `asyncio.to_thread`; returns the provider's
-already-`{success, data}`-shaped result over the Kafka contract. Update `NODE.md` with the
-`web_search` contract.
+already-`{success, data}`-shaped **raw** result over the Kafka contract (no LLM summarization
+— §1). Update `NODE.md` with the `web_search` contract.
 
 ---
 
