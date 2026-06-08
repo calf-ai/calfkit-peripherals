@@ -1,4 +1,4 @@
-# Provenance for the vendored hermes-agent shell + file toolset.
+# Provenance for the vendored hermes-agent shell, file, web + todo toolsets.
 # (Chromium README.chromium-style schema; see ../../docs/project-structure.md)
 name: hermes-agent
 homepage: https://github.com/NousResearch/hermes-agent
@@ -12,7 +12,8 @@ license_file: LICENSE
 #   files:       read_file, write_file, patch, search_files
 #   web_search:  query -> ranked links (env-selected provider: ddgs/brave-free/searxng/tavily)
 #   web_extract: URLs -> raw provider content (Tier-0 backend: tavily)
-provides: [shell, files, web_search, web_extract]
+#   todo:        per-session task list Operator (id-keyed; merge/replace; durable Store deferred -- Faust table)
+provides: [shell, files, web_search, web_extract, todo]
 
 # Vendored file set = 42 .py files (the bounded transitive closure with the upstream's
 # app-runtime packages treated as a shim boundary). The authoritative list is the
@@ -35,6 +36,8 @@ files:
   - "tools/web_providers/brave_free.py    # to vendor in Stage B — moved from plugins/web/brave_free/provider.py (search; httpx)"
   - "tools/web_providers/searxng.py       # to vendor in Stage B — moved from plugins/web/searxng/provider.py (search; httpx)"
   - "tools/web_providers/tavily.py        # to vendor in Stage B — moved from plugins/web/tavily/provider.py (search + extract; tools.interrupt vendored)"
+  # todo tool — SAME pin (revision unchanged):
+  - "tools/todo_tool.py                    # per-session task list Operator (id-keyed; merge/replace); durable Store deferred — see ../../docs/design/todo-tool-port.md"
 
 # Upstreams that hermes-agent itself ported code from (preserve their "Ported from" headers):
 secondary_origins:
@@ -44,7 +47,7 @@ secondary_origins:
 
 # Deliberately NOT vendored:
 cut:
-  - "tools/kanban_tools.py  # drags in hermes_cli.kanban_db (~7.6k-LOC SQLite); a todo tool, not shell/file"
+  - "tools/kanban_tools.py  # persistent SQLite todo variant: drags hermes_cli.kanban_db (~7.6k-LOC SQLite); the in-memory todo Operator is vendored instead (docs/design/todo-tool-port.md); kanban's shared-file model doesn't fit calfkit's no-shared-FS deploy"
   - "tools/web_tools.py  # 1347-LOC in-process dispatcher (web_search_tool/web_extract_tool): auxiliary-LLM summarization, legacy backend resolution, Nous managed-gateway routing, secret-redaction, exa/parallel client-cache slots; node re-implements thin orchestration instead"
   - "plugins/web/exa/provider.py  # DEFER (fast-follow): inline `import tools.web_tools` cache-slot indirection raises ImportError at call time; gated on EXA_API_KEY"
   - "plugins/web/parallel/provider.py  # DEFER (fast-follow): same web_tools cache-slot indirection; gated on PARALLEL_API_KEY"
@@ -60,3 +63,5 @@ local_modifications:
   - "Provider relocation (manual file move, NOT a rewriter op): plugins/web/<name>/provider.py -> _vendor/tools/web_providers/<name>.py for ddgs/brave_free/searxng/tavily; the tools.* target path is chosen so existing rewriter rules (agent.web_search_provider + tavily's tools.interrupt) apply with no new rule"
   - "Authored empty _vendor/tools/web_providers/__init__.py (nothing in the vendored closure imports the providers; the registry doesn't)"
   - "Dropped plugin scaffolding: plugins/web/<name>/__init__.py + plugin.yaml for each provider (their register(ctx) hook needs an un-vendored PluginContext; the node owns its own name->class registration list calling register_provider())"
+  # todo (see ../../docs/design/todo-tool-port.md + ../../docs/adr/0003-vendor-hermes-todo-operator-defer-store.md):
+  - "tools/todo_tool.py + test_vendored_todo_tool.py: single import rewrite (tools.registry -> calfkit_hermes._vendor.tools.registry); vendored as a stateless Operator — durable per-session Store (Faust table) deferred to the node phase; no patch, no shim"

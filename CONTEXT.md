@@ -47,3 +47,31 @@ A provider capability: given *URLs*, return their fetched, cleaned page content
 — a third-party service (Tavily, Exa, …) does the fetching — as opposed to
 `web_fetch`, which fetches in-process behind our own SSRF guard.
 _Avoid_: Scrape; "fetch" (reserve that for the in-process `web_fetch` path).
+
+**Operator**:
+A vendored tool's logic — the input→output computation (e.g. validate / merge /
+dedup a todo list) — driven so it holds no *durable* state of its own; calfkit
+supplies its state via a Store. We vendor the operator when a tool's value is its
+logic, not its storage. An upstream class may be *named* like a store yet be an
+operator in our terms: hermes' `TodoStore` retains an in-memory list, but we drive
+it per-call (seed it, apply, read the result back) so the durable copy lives in
+our Store.
+_Avoid_: Engine, handler, executor.
+
+**Store**:
+A pluggable, calfkit-owned state layer behind an Operator — `get` / `put` /
+`delete` keyed by a `session_key`. The unit calfkit supplies so a vendored
+Operator stays stateless across calls. Implementations are interchangeable: an
+in-memory dict for dev/tests, a Kafka-backed Faust table for durable, multi-tenant
+state. Parallels Provider, but for *state* rather than an external *backend*.
+_Avoid_: Backend (reserve for Provider/transport); cache; the upstream class name
+(`TodoStore` is an Operator in our terms, not a Store).
+
+**Session**:
+The unit a stateful tool's state is scoped to — one agent run, identified by a
+`session_key`. A todo list (like a shell's cwd/env) belongs to exactly one session
+and starts empty for a new session; it does **not** carry across sessions of the
+same agent. "Durable" for session-scoped state means it survives a node
+restart/rebalance *within* the session's life, not across sessions.
+_Avoid_: Conversation; Agent (one agent identity can span many sessions); Task
+(`task_id` is a different, finer key that upstream collapses to `"default"`).

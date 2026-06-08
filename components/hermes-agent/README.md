@@ -1,11 +1,13 @@
 # calfkit-hermes
 
-calfkit node component vendoring the **shell + file toolset** from
+calfkit node component vendoring the **shell, file, web, and todo toolsets** from
 [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) (MIT).
 
 Exposes (over the calfkit Kafka contract — see `NODE.md`, Stage D):
 - **shell:** `terminal`, `process`, `execute_code` (Programmatic Tool Calling)
 - **files:** `read_file`, `write_file`, `patch`, `search_files`
+- **web_search / web_extract:** query → ranked links / URLs → content (provider system: ddgs / brave-free / searxng / tavily)
+- **todo:** `todo` — per-session task list (id-keyed; merge/replace; durable Store deferred — Faust table)
 
 ## Provenance & license
 

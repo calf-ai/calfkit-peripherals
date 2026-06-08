@@ -1,8 +1,10 @@
+# Vendored from NousResearch/hermes-agent @ 5a36f76 (MIT) -- tests/tools/test_todo_tool.py
+# Imports rewritten to the calfkit_hermes._vendor namespace; otherwise verbatim.
 """Tests for the todo tool module."""
 
 import json
 
-from tools.todo_tool import TodoStore, todo_tool
+from calfkit_hermes._vendor.tools.todo_tool import TodoStore, todo_tool
 
 
 class TestWriteAndRead:
