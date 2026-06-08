@@ -24,6 +24,13 @@ shell-docker  = ["docker"]
 shell-modal   = ["modal"]
 shell-daytona = ["daytona-sdk"]
 # Note: the SSH backend shells out to the system OpenSSH CLI (no paramiko dependency).
+# Web search/extract providers are env-selected (WEB_SEARCH_BACKEND / WEB_EXTRACT_BACKEND);
+# their SDKs are lazy-imported by the provider module, so base `web-search` runs ddgs and
+# the opt-in extras enable the httpx-backed providers. web-tavily is the sole Tier-0 extract path.
+web-search    = ["ddgs"]
+web-brave     = ["httpx"]
+web-searxng   = ["httpx"]
+web-tavily    = ["httpx"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/calfkit_hermes"]
