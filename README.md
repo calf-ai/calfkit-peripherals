@@ -1,9 +1,8 @@
 # calfkit-peripherals
 
-Shared monorepo where **calfkit** vendors agent tools ported from many upstream
-open-source codebases into one place.
+Shared monorepo where **calfkit** vendors agent tools ported from many upstream open-source codebases into one place.
 
-calfkit's tool interface is **Kafka** (language-agnostic): a "node tool" is a process
+calfkit's tool interface is **Kafka-based** (language-agnostic): a "node tool" is a process
 that consumes a request topic and produces a reply. So this repo is a **polyglot
 monorepo of node components** — each component vendors one upstream source and exposes
 its tools over the calfkit Kafka contract.
