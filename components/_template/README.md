@@ -9,4 +9,4 @@ Copy this directory to `components/<source>/` to start a new port, then fill in:
 - `NODE.md` — the Kafka contract this node exposes
 
 Full instructions: [`../../docs/project-structure.md`](../../docs/project-structure.md).
-Follow the `copy-open-source-code` skill (license-first) when vendoring.
+Follow the `open-source-vendoring-best-practices` skill (license-first) when vendoring.
