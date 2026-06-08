@@ -1,4 +1,4 @@
-# Vendor pydantic-ai's web_fetch self-contained; keep the framework glue as reference only
+# Vendor pydantic-ai's web_fetch self-contained; keep the framework glue as a NODE.md port-note
 
 **Status:** accepted · 2026-06-08
 
@@ -46,7 +46,7 @@ content is returned from live code as a neutral `bytes + media_type`, not pydant
 The shipped `web_fetch` package has zero `pydantic-ai` dependency and is
 re-syncable against a pinned tag (v1.106.0). The pydantic glue is reattached at
 port time from the `NODE.md` port-note against calfkit's live pydantic-ai. We also
-vendor `test_ssrf.py` — the CVE-chain regression assurance — though as a
-**port-and-rewrite** (the streaming-cap restructure changes ~23 `client.get` mock
-sites; see the design doc §7-C2), not a verbatim copy. See ADR-0002 for the parallel
-"vendor faithfully, integrate later" posture on config.
+vendor `test_ssrf.py` **and `test_web_fetch.py`** (the SSRF + engine regression
+assurance) — though as **port-and-rewrites** (the streaming-cap restructure changes
+their mock shape; see the design doc §5), not verbatim copies. See ADR-0002 for the
+parallel "vendor faithfully, integrate later" posture on config.
