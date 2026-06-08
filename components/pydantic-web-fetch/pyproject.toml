@@ -20,5 +20,12 @@ dependencies = [
 [project.optional-dependencies]
 # No optional backends — the fetch path is a single in-process httpx client.
 
+[dependency-groups]
+# Dev/test deps — NOT shipped to consumers (the git+subdirectory install reads only
+# [project]/optional-dependencies, never dependency-groups). Installed by `uv run`/`uv sync`
+# by default, so `uv run pytest` uses the project's own pytest instead of a global one.
+# httpx + markdownify are already base deps, so the SSRF/fetch tests need only pytest here.
+dev = ["pytest>=8"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/calfkit_pydantic_web_fetch"]
