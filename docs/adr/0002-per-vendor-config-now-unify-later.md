@@ -26,12 +26,18 @@ provider selection across all sources.
 Vendoring the config-selection layer whole avoids precision-cutting surgery on the
 registry, costs **zero new shims** (the loader is already shimmed), and defers
 cross-source unification to integration time — consistent with the repo's "vendor
-faithfully, integrate later" posture (cf. ADR-0001's glue-as-reference).
+faithfully, integrate later" posture (cf. ADR-0001's glue-as-port-note).
 
 ## Consequences
 
 The registry is vendored faithfully (no surgery), but its config.yaml resolver is
-dormant — short-term provider selection is first-party env glue the node controls,
-not hermes-CLI semantics calfkit would later have to override. The unification is a
-known, deferred follow-up that lands at the calfkit integration boundary, not inside
-any one vendored component.
+**dormant** — short-term provider selection is first-party env glue the node controls,
+not hermes-CLI semantics calfkit would later have to override.
+
+Be honest about the trade-off: the dormant resolver (~110 LOC) is effectively **dead
+code** — the node never calls it, and under the `{}` config shim it would fall through
+to an availability-walk anyway, so it is *also inert*. It is kept for **re-sync
+fidelity** (faithful vendoring, no surgery), not for function. To keep that provable, a
+node test asserts the resolver is never imported/called. The live "per-vendor config"
+is the env selection, not `config.yaml`; the unification of *that* is the known,
+deferred follow-up at the calfkit integration boundary.

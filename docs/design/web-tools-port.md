@@ -39,7 +39,8 @@ edges), `node/` (the calfkit Kafka adapter — your code), `tests/`. Glossary in
 [`CONTEXT.md`](../../CONTEXT.md).
 
 ## Status
-Both specs are **design-converged** (grill complete; deep-review round 1 done — full findings
-live in each per-tool doc's §9). Open: component-naming rubber-stamp; an optional round-2
-confirmation review; then TDD-scaffold per `project-structure.md`. Tracked on branch
-`vendor/web-tools`.
+Both specs are **design-converged** (grill complete; deep-review **rounds 1–2** done — full
+findings in each per-tool doc's §9–§10). Round 2 (6 agents, 3 per doc) found two new web_fetch
+CRITICALs (missing engine test suite; charset bug in the streaming restructure) plus gaps and
+stale post-split cross-refs — all folded in. Open: TDD-scaffold per `project-structure.md`.
+Tracked on branch `vendor/web-tools`.
