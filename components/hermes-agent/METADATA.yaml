@@ -8,9 +8,11 @@ license: MIT
 license_file: LICENSE
 
 # calfkit tools this component exposes (over the Kafka contract — see NODE.md):
-#   shell:  terminal, process, execute_code
-#   files:  read_file, write_file, patch, search_files
-provides: [shell, files]
+#   shell:       terminal, process, execute_code
+#   files:       read_file, write_file, patch, search_files
+#   web_search:  query -> ranked links (env-selected provider: ddgs/brave-free/searxng/tavily)
+#   web_extract: URLs -> raw provider content (Tier-0 backend: tavily)
+provides: [shell, files, web_search, web_extract]
 
 # Vendored file set = 42 .py files (the bounded transitive closure with the upstream's
 # app-runtime packages treated as a shim boundary). The authoritative list is the
@@ -25,6 +27,14 @@ files:
   - "agent/file_safety.py, agent/redact.py, agent/async_utils.py, agent/i18n.py, agent/skill_utils.py"
   - "hermes_constants.py, utils.py"
   - "locales/*.yaml"
+  # web_search/web_extract additions — SAME pin (revision unchanged); to vendor in Stage B:
+  - "agent/web_search_provider.py        # to vendor in Stage B — WebSearchProvider ABC (search + extract + capability flags)"
+  - "agent/web_search_registry.py        # to vendor in Stage B — in-memory register/get_provider; config-resolver vendored whole but dormant (node selects by env, ADR-0002)"
+  - "tools/url_safety.py                  # to vendor in Stage B — async_is_safe_url extract-side SSRF guard (fail-closed under {} stub)"
+  - "tools/web_providers/ddgs.py          # to vendor in Stage B — moved from plugins/web/ddgs/provider.py (search)"
+  - "tools/web_providers/brave_free.py    # to vendor in Stage B — moved from plugins/web/brave_free/provider.py (search; httpx)"
+  - "tools/web_providers/searxng.py       # to vendor in Stage B — moved from plugins/web/searxng/provider.py (search; httpx)"
+  - "tools/web_providers/tavily.py        # to vendor in Stage B — moved from plugins/web/tavily/provider.py (search + extract; tools.interrupt vendored)"
 
 # Upstreams that hermes-agent itself ported code from (preserve their "Ported from" headers):
 secondary_origins:
@@ -35,9 +45,18 @@ secondary_origins:
 # Deliberately NOT vendored:
 cut:
   - "tools/kanban_tools.py  # drags in hermes_cli.kanban_db (~7.6k-LOC SQLite); a todo tool, not shell/file"
+  - "tools/web_tools.py  # 1347-LOC in-process dispatcher (web_search_tool/web_extract_tool): auxiliary-LLM summarization, legacy backend resolution, Nous managed-gateway routing, secret-redaction, exa/parallel client-cache slots; node re-implements thin orchestration instead"
+  - "plugins/web/exa/provider.py  # DEFER (fast-follow): inline `import tools.web_tools` cache-slot indirection raises ImportError at call time; gated on EXA_API_KEY"
+  - "plugins/web/parallel/provider.py  # DEFER (fast-follow): same web_tools cache-slot indirection; gated on PARALLEL_API_KEY"
+  - "plugins/web/firecrawl/provider.py  # DEFER: 'take whole' drags Nous managed-gateway infra we'll never run"
+  - "plugins/web/xai/provider.py  # DEFER: couples to tools.xai_http + config"
 
 local_modifications:
   - "Mechanical import rewrite: tools.* / agent.* / hermes_constants / utils -> calfkit_hermes._vendor.* (most-specific-prefix-wins); app-runtime edges (hermes_cli.* / gateway.* / model_tools / agent.auxiliary_client / agent.lsp.*) -> calfkit_hermes._shims.*"
   - "Authored empty _vendor/agent/__init__.py (upstream's imports jiter_preload, not vendored)"
   - "Manual fix-ups: registry.py importlib f-string root; agent/i18n.py locales path; code_execution_tool.py __file__ PYTHONPATH; agent/skill_utils.py cut-kanban branch"
   - "See ../../docs/design/shell-file-tool-port.md for full rationale + Stage-D (security/multi-tenant) deferral"
+  # web_search/web_extract (planned — applied in Stage B; see ../../docs/design/web-search-tool-port.md):
+  - "Provider relocation (manual file move, NOT a rewriter op): plugins/web/<name>/provider.py -> _vendor/tools/web_providers/<name>.py for ddgs/brave_free/searxng/tavily; the tools.* target path is chosen so existing rewriter rules (agent.web_search_provider + tavily's tools.interrupt) apply with no new rule"
+  - "Authored empty _vendor/tools/web_providers/__init__.py (nothing in the vendored closure imports the providers; the registry doesn't)"
+  - "Dropped plugin scaffolding: plugins/web/<name>/__init__.py + plugin.yaml for each provider (their register(ctx) hook needs an un-vendored PluginContext; the node owns its own name->class registration list calling register_provider())"
