@@ -65,7 +65,7 @@ components/<source>/               # e.g. components/hermes-agent/
 
 ## How to add a new port
 
-1. **License first.** Follow the `copy-open-source-code` skill: find + classify the
+1. **License first.** Follow the `open-source-vendoring-best-practices` skill: find + classify the
    upstream license **before** copying. Permissive only; copyleft / no-license = stop & flag.
 2. **Copy the template:** `cp -r components/_template components/<source>`.
 3. **Record provenance** in `METADATA.yaml` (repo, commit SHA, date, SPDX, file list) and

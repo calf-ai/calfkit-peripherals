@@ -7,7 +7,7 @@ files, local modifications). This file is the aggregated index across components
 
 ## Conventions
 
-See `docs/project-structure.md` and the `copy-open-source-code` skill.
+See `docs/project-structure.md` and the `open-source-vendoring-best-practices` skill.
 
 - Vendor **by source**, with the license **checked and classified before** copying.
 - **Permissive licenses only** (MIT / BSD / ISC / Apache-2.0 / Unlicense / 0BSD / CC0).

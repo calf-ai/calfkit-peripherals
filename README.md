@@ -22,7 +22,7 @@ its tools over the calfkit Kafka contract.
 
 Copy `components/_template/` → `components/<source>/` and follow
 [`docs/project-structure.md`](docs/project-structure.md). Vendor **by source**
-(license-first, per the `copy-open-source-code` conventions), expose **by tool**, and
+(license-first, per the `open-source-vendoring-best-practices` conventions), expose **by tool**, and
 keep upstream code import-rewritten under `_vendor/`.
 
 ## Status
