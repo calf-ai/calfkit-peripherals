@@ -8,10 +8,12 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from pydantic_ai._ssrf import (
+from calfkit_pydantic_web_fetch._vendor._ssrf import (
     _DEFAULT_TIMEOUT,  # pyright: ignore[reportPrivateUsage]
     _MAX_REDIRECTS,  # pyright: ignore[reportPrivateUsage]
+    MAX_FETCH_BYTES,
     ResolvedUrl,
+    ResponseTooLargeError,
     build_url_with_ip,
     extract_host_and_port,
     is_cloud_metadata_ip,
@@ -26,11 +28,71 @@ from pydantic_ai._ssrf import (
 pytestmark = [pytest.mark.anyio]
 
 
+class _StreamResponse:
+    """A fake streamed `httpx.Response` for the `client.stream(...)` async context manager.
+
+    Mirrors the surface `safe_download` reads off the per-hop stream: `is_redirect`,
+    `headers`, `status_code`, `request`, and `aiter_bytes()` (an async iterator of
+    decompressed body chunks). Redirect responses leave the body untouched; the final hop
+    is drained via `aiter_bytes()` and `safe_download` rebuilds a detached `httpx.Response`.
+    """
+
+    def __init__(
+        self,
+        *,
+        is_redirect: bool = False,
+        headers: dict[str, str] | None = None,
+        status_code: int = 200,
+        body: bytes = b'',
+        chunks: list[bytes] | None = None,
+        request_url: str = 'https://example.com/',
+    ) -> None:
+        self.is_redirect = is_redirect
+        self.headers = httpx.Headers(headers or {})
+        self.status_code = status_code
+        self.request = httpx.Request('GET', request_url)
+        self._chunks = chunks if chunks is not None else ([body] if body else [])
+        self.body_read = False
+
+    async def aiter_bytes(self) -> Any:
+        self.body_read = True
+        for chunk in self._chunks:
+            yield chunk
+
+
+class _StreamCM:
+    """Async context manager returned by the mocked `client.stream(...)`."""
+
+    def __init__(self, response: _StreamResponse) -> None:
+        self._response = response
+        self.closed = False
+
+    async def __aenter__(self) -> _StreamResponse:
+        return self._response
+
+    async def __aexit__(self, *exc: object) -> None:
+        self.closed = True
+
+
+def _streaming_client(responses: list[_StreamResponse] | _StreamResponse) -> MagicMock:
+    """Build a mock client whose `.stream(...)` yields the given response(s) per hop."""
+    if isinstance(responses, _StreamResponse):
+        responses = [responses]
+    cms = [_StreamCM(r) for r in responses]
+    client = MagicMock()
+    if len(cms) == 1:
+        client.stream = MagicMock(return_value=cms[0])
+    else:
+        client.stream = MagicMock(side_effect=cms)
+    client._stream_cms = cms  # exposed for assertions
+    return client
+
+
 @pytest.fixture
 def mock_dns(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     """Patch DNS resolution in _ssrf to prevent real network calls."""
     mock = AsyncMock()
-    monkeypatch.setattr('pydantic_ai._ssrf.run_in_executor', mock)
+    monkeypatch.setattr('calfkit_pydantic_web_fetch._vendor._ssrf.run_in_executor', mock)
     return mock
 
 
@@ -39,8 +101,8 @@ def mock_ssrf_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Patch HTTP client creation in _ssrf to prevent real network calls.
 
     The wrapper configures the returned mock as an async context manager that yields
-    itself (matching `httpx.AsyncClient` behavior), so tests work regardless of
-    whether `safe_download` uses the client directly or via `async with`.
+    itself (matching `httpx.AsyncClient` behavior), so `async with create_async_http_client(...)`
+    in `safe_download` resolves to the test's mock client.
     """
     mock = MagicMock()
 
@@ -49,7 +111,7 @@ def mock_ssrf_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
         client.__aenter__.return_value = client
         return client
 
-    monkeypatch.setattr('pydantic_ai._ssrf.create_async_http_client', factory_wrapper)
+    monkeypatch.setattr('calfkit_pydantic_web_fetch._vendor._ssrf.create_async_http_client', factory_wrapper)
     return mock
 
 
@@ -593,176 +655,197 @@ class TestSafeDownload:
     """Tests for safe_download function."""
 
     async def test_successful_download(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        mock_response = AsyncMock()
-        mock_response.is_redirect = False
-        mock_response.raise_for_status = lambda: None
-        mock_response.content = b'test content'
-
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
 
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
+        mock_client = _streaming_client(_StreamResponse(body=b'test content'))
         mock_ssrf_client.return_value = mock_client
 
         response = await safe_download('https://example.com/file.txt')
         assert response.content == b'test content'
 
-        mock_client.get.assert_called_once()
-        call_args = mock_client.get.call_args
-        assert '93.184.215.14' in call_args[0][0]
+        mock_client.stream.assert_called_once()
+        call_args = mock_client.stream.call_args
+        assert call_args[0][0] == 'GET'
+        assert '93.184.215.14' in call_args[0][1]
         assert call_args[1]['headers']['Host'] == 'example.com'
         assert call_args[1]['extensions'] == {'sni_hostname': 'example.com'}
 
     async def test_redirect_followed(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {'location': 'https://cdn.example.com/file.txt'}
-
-        final_response = AsyncMock()
-        final_response.is_redirect = False
-        final_response.raise_for_status = lambda: None
-        final_response.content = b'final content'
+        redirect = _StreamResponse(
+            is_redirect=True, status_code=302, headers={'location': 'https://cdn.example.com/file.txt'}
+        )
+        final = _StreamResponse(body=b'final content')
 
         mock_dns.side_effect = [
             [(2, 1, 6, '', ('93.184.215.14', 0))],
             [(2, 1, 6, '', ('140.82.114.4', 0))],
         ]
 
-        mock_client = AsyncMock()
-        mock_client.get.side_effect = [redirect_response, final_response]
+        mock_client = _streaming_client([redirect, final])
         mock_ssrf_client.return_value = mock_client
 
         response = await safe_download('https://example.com/file.txt')
         assert response.content == b'final content'
-        assert mock_client.get.call_count == 2
+        assert mock_client.stream.call_count == 2
+        # The redirect hop's body must NOT have been read (it is left for the context to close).
+        assert redirect.body_read is False
 
     async def test_redirect_to_private_ip_blocked(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {'location': 'http://internal.local/file.txt'}
+        redirect = _StreamResponse(
+            is_redirect=True, status_code=302, headers={'location': 'http://internal.local/file.txt'}
+        )
 
         mock_dns.side_effect = [
             [(2, 1, 6, '', ('93.184.215.14', 0))],
             [(2, 1, 6, '', ('192.168.1.1', 0))],
         ]
 
-        mock_client = AsyncMock()
-        mock_client.get.return_value = redirect_response
+        mock_client = _streaming_client(redirect)
         mock_ssrf_client.return_value = mock_client
 
         with pytest.raises(ValueError, match='Access to private/internal IP address'):
             await safe_download('https://example.com/file.txt')
 
     async def test_max_redirects_exceeded(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {'location': 'https://example.com/redirect'}
-
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
 
-        mock_client = AsyncMock()
-        mock_client.get.return_value = redirect_response
+        # Each hop returns a fresh redirect CM; supply more than the limit allows.
+        def stream_factory(*args: Any, **kwargs: Any) -> _StreamCM:
+            return _StreamCM(
+                _StreamResponse(
+                    is_redirect=True, status_code=302, headers={'location': 'https://example.com/redirect'}
+                )
+            )
+
+        mock_client = MagicMock()
+        mock_client.stream = MagicMock(side_effect=stream_factory)
         mock_ssrf_client.return_value = mock_client
 
         with pytest.raises(ValueError, match=f'Too many redirects \\({_MAX_REDIRECTS + 1}\\)'):
             await safe_download('https://example.com/file.txt')
 
     async def test_relative_redirect_resolved(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {'location': '/new-path/file.txt'}
-
-        final_response = AsyncMock()
-        final_response.is_redirect = False
-        final_response.raise_for_status = lambda: None
-        final_response.content = b'final content'
+        redirect = _StreamResponse(is_redirect=True, status_code=302, headers={'location': '/new-path/file.txt'})
+        final = _StreamResponse(body=b'final content')
 
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
 
-        mock_client = AsyncMock()
-        mock_client.get.side_effect = [redirect_response, final_response]
+        mock_client = _streaming_client([redirect, final])
         mock_ssrf_client.return_value = mock_client
 
         response = await safe_download('https://example.com/old-path/file.txt')
         assert response.content == b'final content'
 
-        second_call = mock_client.get.call_args_list[1]
-        assert '/new-path/file.txt' in second_call[0][0]
+        second_call = mock_client.stream.call_args_list[1]
+        assert '/new-path/file.txt' in second_call[0][1]
 
     async def test_missing_location_header(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {}
+        redirect = _StreamResponse(is_redirect=True, status_code=302, headers={})
 
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
 
-        mock_client = AsyncMock()
-        mock_client.get.return_value = redirect_response
+        mock_client = _streaming_client(redirect)
         mock_ssrf_client.return_value = mock_client
 
         with pytest.raises(ValueError, match='Redirect response missing Location header'):
             await safe_download('https://example.com/file.txt')
 
     async def test_protocol_relative_redirect(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {'location': '//cdn.example.com/file.txt'}
-
-        final_response = AsyncMock()
-        final_response.is_redirect = False
-        final_response.raise_for_status = lambda: None
-        final_response.content = b'final content'
+        redirect = _StreamResponse(
+            is_redirect=True, status_code=302, headers={'location': '//cdn.example.com/file.txt'}
+        )
+        final = _StreamResponse(body=b'final content')
 
         mock_dns.side_effect = [
             [(2, 1, 6, '', ('93.184.215.14', 0))],
             [(2, 1, 6, '', ('140.82.114.4', 0))],
         ]
 
-        mock_client = AsyncMock()
-        mock_client.get.side_effect = [redirect_response, final_response]
+        mock_client = _streaming_client([redirect, final])
         mock_ssrf_client.return_value = mock_client
 
         response = await safe_download('https://example.com/file.txt')
         assert response.content == b'final content'
-        assert mock_client.get.call_count == 2
+        assert mock_client.stream.call_count == 2
 
-        second_call = mock_client.get.call_args_list[1]
+        second_call = mock_client.stream.call_args_list[1]
         assert second_call[1]['headers']['Host'] == 'cdn.example.com'
 
     async def test_protocol_relative_redirect_to_private_blocked(
         self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock
     ) -> None:
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {'location': '//internal.local/file.txt'}
+        redirect = _StreamResponse(
+            is_redirect=True, status_code=302, headers={'location': '//internal.local/file.txt'}
+        )
 
         mock_dns.side_effect = [
             [(2, 1, 6, '', ('93.184.215.14', 0))],
             [(2, 1, 6, '', ('192.168.1.1', 0))],
         ]
 
-        mock_client = AsyncMock()
-        mock_client.get.return_value = redirect_response
+        mock_client = _streaming_client(redirect)
         mock_ssrf_client.return_value = mock_client
 
         with pytest.raises(ValueError, match='Access to private/internal IP address'):
             await safe_download('https://example.com/file.txt')
 
     async def test_http_no_sni_extension(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        mock_response = AsyncMock()
-        mock_response.is_redirect = False
-        mock_response.raise_for_status = lambda: None
-
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
 
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
+        mock_client = _streaming_client(_StreamResponse(body=b'ok'))
         mock_ssrf_client.return_value = mock_client
 
         await safe_download('http://example.com/file.txt')
 
-        call_args = mock_client.get.call_args
+        call_args = mock_client.stream.call_args
         assert call_args[1]['extensions'] == {}
+
+    async def test_byte_cap_aborts_oversize_response(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
+        """A body exceeding MAX_FETCH_BYTES is aborted mid-stream with ResponseTooLargeError.
+
+        The chunks sum past the cap; `safe_download` must raise BEFORE buffering the whole body
+        (and therefore before any decode/markdownify downstream). §5 streaming byte cap.
+        """
+        mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
+
+        # Three 2 MiB chunks (6 MiB total) > 5 MiB cap. A non-streaming buffer would OOM; the
+        # stream must abort after the chunk that crosses the threshold.
+        chunk = b'x' * (2 * 1024 * 1024)
+        oversize = _StreamResponse(chunks=[chunk, chunk, chunk])
+
+        mock_client = _streaming_client(oversize)
+        mock_ssrf_client.return_value = mock_client
+
+        with pytest.raises(ResponseTooLargeError, match=f'{MAX_FETCH_BYTES}'):
+            await safe_download('https://example.com/big')
+
+    async def test_byte_cap_allows_response_at_limit(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
+        """A body exactly at MAX_FETCH_BYTES is allowed (the cap aborts only when EXCEEDED)."""
+        mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
+
+        body = b'y' * MAX_FETCH_BYTES
+        mock_client = _streaming_client(_StreamResponse(body=body))
+        mock_ssrf_client.return_value = mock_client
+
+        response = await safe_download('https://example.com/atlimit')
+        assert len(response.content) == MAX_FETCH_BYTES
+
+    async def test_charset_preserved_non_utf8(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
+        """Non-UTF-8 bodies decode via the Content-Type charset, not blind UTF-8 (§5).
+
+        `é` (U+00E9) in latin-1 is the single byte 0xE9, which is NOT valid UTF-8. The rebuilt
+        response must carry the charset so `.text` resolves it correctly.
+        """
+        mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
+
+        body = 'Café'.encode('latin-1')
+        response_mock = _StreamResponse(headers={'content-type': 'text/html; charset=latin-1'}, body=body)
+        mock_client = _streaming_client(response_mock)
+        mock_ssrf_client.return_value = mock_client
+
+        response = await safe_download('https://example.com/latin1')
+        assert response.content == body
+        assert response.text == 'Café'
 
     async def test_protocol_validation(self) -> None:
         with pytest.raises(ValueError, match='URL protocol "file" is not allowed'):
@@ -772,14 +855,9 @@ class TestSafeDownload:
             await safe_download('ftp://ftp.example.com/file.txt')
 
     async def test_timeout_parameter(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        mock_response = AsyncMock()
-        mock_response.is_redirect = False
-        mock_response.raise_for_status = lambda: None
-
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
 
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
+        mock_client = _streaming_client(_StreamResponse(body=b'ok'))
         mock_ssrf_client.return_value = mock_client
 
         await safe_download('https://example.com/file.txt', timeout=60)
@@ -787,14 +865,9 @@ class TestSafeDownload:
         mock_ssrf_client.assert_called_once_with(timeout=60)
 
     async def test_default_timeout(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        mock_response = AsyncMock()
-        mock_response.is_redirect = False
-        mock_response.raise_for_status = lambda: None
-
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
 
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
+        mock_client = _streaming_client(_StreamResponse(body=b'ok'))
         mock_ssrf_client.return_value = mock_client
 
         await safe_download('https://example.com/file.txt')
@@ -809,27 +882,28 @@ class TestSafeDownload:
         reused a global) to `create_async_http_client` (new client per call),
         the client must be explicitly closed.
 
+        calfkit port (§5): under the streaming restructure the body must be DRAINED inside the
+        client context (else a later `.content`/`.text` read would raise `ResponseNotRead`).
+        We patch `client.stream` to a real async-CM yielding a streamed response, then assert
+        the rebuilt response is readable AND the client is closed.
+
         Regression test for PR #4421 auto-review feedback.
         https://github.com/pydantic/pydantic-ai/pull/4421
         """
-        mock_response = AsyncMock()
-        mock_response.is_redirect = False
-        mock_response.raise_for_status = lambda: None
-        mock_response.content = b'test content'
-
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
 
         created_clients: list[httpx.AsyncClient] = []
 
         def tracking_create(**kwargs: Any) -> httpx.AsyncClient:
             client = httpx.AsyncClient()
-            client.get = AsyncMock(return_value=mock_response)
+            client.stream = MagicMock(return_value=_StreamCM(_StreamResponse(body=b'test content')))
             created_clients.append(client)
             return client
 
-        monkeypatch.setattr('pydantic_ai._ssrf.create_async_http_client', tracking_create)
+        monkeypatch.setattr('calfkit_pydantic_web_fetch._vendor._ssrf.create_async_http_client', tracking_create)
 
         response = await safe_download('https://example.com/file.txt')
+        # Body is fully read off the rebuilt detached response — no ResponseNotRead.
         assert response.content == b'test content'
         assert len(created_clients) == 1
         assert created_clients[0].is_closed
@@ -837,11 +911,7 @@ class TestSafeDownload:
     async def test_allowed_domains_permits(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
         """Test that allowed domain passes validation."""
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
-        mock_response = AsyncMock()
-        mock_response.is_redirect = False
-        mock_response.raise_for_status = lambda: None
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
+        mock_client = _streaming_client(_StreamResponse(body=b'ok'))
         mock_ssrf_client.return_value = mock_client
 
         await safe_download('https://example.com/page', allowed_domains=['example.com'])
@@ -860,11 +930,7 @@ class TestSafeDownload:
     ) -> None:
         """A trailing FQDN dot or uppercasing must not cause false rejection by the allowed-domains list."""
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
-        mock_response = AsyncMock()
-        mock_response.is_redirect = False
-        mock_response.raise_for_status = lambda: None
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
+        mock_client = _streaming_client(_StreamResponse(body=b'ok'))
         mock_ssrf_client.return_value = mock_client
 
         await safe_download(url, allowed_domains=['example.com'])
@@ -885,26 +951,21 @@ class TestSafeDownload:
     async def test_blocked_domains_permits(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
         """Test that non-blocked domain passes validation."""
         mock_dns.return_value = [(2, 1, 6, '', ('93.184.215.14', 0))]
-        mock_response = AsyncMock()
-        mock_response.is_redirect = False
-        mock_response.raise_for_status = lambda: None
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
+        mock_client = _streaming_client(_StreamResponse(body=b'ok'))
         mock_ssrf_client.return_value = mock_client
 
         await safe_download('https://example.com/page', blocked_domains=['evil.com'])
 
     async def test_redirect_to_blocked_domain_rejected(self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock) -> None:
-        """Test that redirects to blocked domains are caught."""
+        """Test that redirects to blocked domains are caught (on the streaming path)."""
         mock_dns.side_effect = [
             [(2, 1, 6, '', ('93.184.215.14', 0))],
             [(2, 1, 6, '', ('140.82.114.4', 0))],
         ]
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {'location': 'https://evil.com/payload'}
-        mock_client = AsyncMock()
-        mock_client.get.return_value = redirect_response
+        redirect = _StreamResponse(
+            is_redirect=True, status_code=302, headers={'location': 'https://evil.com/payload'}
+        )
+        mock_client = _streaming_client(redirect)
         mock_ssrf_client.return_value = mock_client
 
         with pytest.raises(ValueError, match='is blocked'):
@@ -913,16 +974,15 @@ class TestSafeDownload:
     async def test_redirect_to_non_allowed_domain_rejected(
         self, mock_dns: AsyncMock, mock_ssrf_client: MagicMock
     ) -> None:
-        """Test that redirects to non-allowed domains are caught."""
+        """Test that redirects to non-allowed domains are caught (on the streaming path)."""
         mock_dns.side_effect = [
             [(2, 1, 6, '', ('93.184.215.14', 0))],
             [(2, 1, 6, '', ('140.82.114.4', 0))],
         ]
-        redirect_response = AsyncMock()
-        redirect_response.is_redirect = True
-        redirect_response.headers = {'location': 'https://other.com/page'}
-        mock_client = AsyncMock()
-        mock_client.get.return_value = redirect_response
+        redirect = _StreamResponse(
+            is_redirect=True, status_code=302, headers={'location': 'https://other.com/page'}
+        )
+        mock_client = _streaming_client(redirect)
         mock_ssrf_client.return_value = mock_client
 
         with pytest.raises(ValueError, match='not in the allowed domains'):

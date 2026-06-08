@@ -24,27 +24,51 @@ Pinned now — independent of the Kafka framing (which is deferred, see below).
   `error:` reply. HTTP error statuses (4xx/5xx) → `error:` (not the body). Charset is
   preserved per §5 (no forced UTF-8 decode).
 
-## Glue port-note (TO FILL IN STAGE C)
+## Glue port-note
 
-> Placeholder — completed in Stage C when the engine is trimmed and the glue is dropped.
-> Records how the vendored engine reconnects against calfkit's **live** pydantic-ai. The
-> `METADATA.yaml` revision + upstream paths are the re-sync pointer; there is no frozen
-> `reference/` snapshot.
+Records how the vendored engine reconnects against calfkit's **live** pydantic-ai. The
+`METADATA.yaml` revision + upstream paths are the re-sync pointer; there is no frozen
+`reference/` snapshot.
 
-The four pydantic glue symbols dropped from the vendor set (§3 / §4), to be re-bound here:
+The four pydantic glue symbols were dropped from the vendor set in Stage C (§3 / §4) and are
+re-bound at the calfkit boundary as follows. The vendored engine
+(`_vendor/common_tools/web_fetch.py`) now exposes only the reusable core — the callable
+`WebFetchLocalTool` and the `WebFetchResult` TypedDict.
 
-- `web_fetch_tool()` — upstream tool factory (`common_tools/web_fetch.py`); the calfkit node
-  wrapper replaces it.  *(TODO Stage C: record the re-bind.)*
-- `Tool` — upstream tool registration type (`pydantic_ai.tools`).  *(TODO Stage C.)*
-- `ModelRetry` — upstream retry-signal exception (`pydantic_ai.exceptions`); calfkit maps the
-  raised-error cases to the `error:` reply instead.  *(TODO Stage C.)*
-- `BinaryContent` — upstream binary content type (`pydantic_ai.messages`).  *(TODO Stage C.)*
+- **`web_fetch_tool()`** — upstream tool factory (`common_tools/web_fetch.py`). **Dropped.**
+  The calfkit node wrapper (Stage D) constructs `WebFetchLocalTool(...)` directly with the
+  §7 fixed safe defaults (`allow_local_urls=False`, `timeout=30`, `max_content_length=50_000`)
+  and adapts its return onto the Kafka reply. No `Tool` registration object is built.
+- **`Tool`** — upstream tool-registration type (`pydantic_ai.tools`). **Dropped.** The Kafka
+  node contract is the registration mechanism in calfkit; the engine no longer wraps itself in
+  a `Tool[Any]`. Re-bind: when porting back into a live pydantic-ai agent, wrap
+  `WebFetchLocalTool(...).__call__` in `Tool(name='web_fetch', ...)` as upstream did.
+- **`ModelRetry`** — upstream retry-signal exception (`pydantic_ai.exceptions`). **Replaced**
+  by the neutral first-party `WebFetchError` (`calfkit_pydantic_web_fetch.results`). The engine
+  raises `WebFetchError('Failed to fetch <url>: <cause>')` on any guard failure (SSRF-blocked,
+  HTTP 4xx/5xx, bad URL, `ResponseTooLargeError`, `httpx.RequestError`). Re-bind: the node maps
+  `WebFetchError` → the `error:` reply; a live pydantic-ai agent would instead re-raise it as
+  `ModelRetry(str(e))`.
+- **`BinaryContent`** — upstream binary content type (`pydantic_ai.messages`). **Replaced** by
+  the neutral first-party `@dataclass FetchedBinary(data: bytes, media_type: str)`
+  (`calfkit_pydantic_web_fetch.results`, §6 — at the engine/`node` boundary, NOT in `_vendor/`).
 
-**`FetchedBinary → BinaryContent` re-wrap:** the live engine returns a neutral first-party
-`@dataclass FetchedBinary(data: bytes, media_type: str)` (§6, at the engine/`node` boundary,
-not in `_vendor/`). Record here the re-wrap shape — `FetchedBinary(data, media_type)` →
-`BinaryContent(data=..., media_type=...)` — that calfkit consumers expect.
-*(TODO Stage C: pin the exact re-wrap.)*
+**`FetchedBinary → BinaryContent` re-wrap (the shape calfkit consumers expect):**
+
+```python
+FetchedBinary(data, media_type)  ->  BinaryContent(data=data, media_type=media_type)
+```
+
+The engine returns `FetchedBinary` for any non-text media type; the node serializes it as the
+`{ data, media_type }` binary reply (§7), and a live pydantic-ai agent re-wraps it field-for-field
+into `BinaryContent` so the model can process it natively.
+
+**§5 streaming byte cap (security fork-point):** body consumption now lives INSIDE the guard
+(`_vendor/_ssrf.safe_download`), which streams each hop, enforces `MAX_FETCH_BYTES = 5 MiB` on
+the final hop's decompressed bytes (raising `ResponseTooLargeError` before any decode), and
+returns a detached, body-loaded `httpx.Response` with charset preserved. The diff vs the
+verbatim baseline is captured in [`patches/0001-ssrf-streaming-byte-cap.patch`](patches/0001-ssrf-streaming-byte-cap.patch)
+so the fork is re-appliable on re-sync.
 
 ## Kafka framing
 

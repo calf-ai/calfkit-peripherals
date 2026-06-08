@@ -7,17 +7,60 @@ and blocks requests to private/internal networks and cloud metadata endpoints.
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import socket
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TypeVar
 from urllib.parse import urlparse, urlunparse
 
 import httpx
 
-from ._utils import run_in_executor
-from .models import create_async_http_client
+__all__ = ['ResponseTooLargeError', 'safe_download']
 
-__all__ = ['safe_download']
+_R = TypeVar('_R')
+
+
+# --- Inlined helpers (calfkit port, §4) ------------------------------------------------------
+# Upstream reaches into `pydantic_ai._utils.run_in_executor` and
+# `pydantic_ai.models.create_async_http_client`. To stay self-contained (no pydantic-ai
+# dependency, ADR-0001) we inline minimal equivalents here. Both are kept as MODULE-LEVEL
+# names so the regression suite can monkeypatch them by string.
+
+
+async def run_in_executor(func: Callable[..., _R], *args: object, **kwargs: object) -> _R:
+    """Run a blocking callable in a worker thread off the event loop.
+
+    Re-implemented over `asyncio.to_thread` (calfkit port). Upstream uses ContextVars + anyio;
+    we do not need that machinery — only `resolve_hostname` offloads `socket.getaddrinfo` here.
+    """
+    return await asyncio.to_thread(func, *args, **kwargs)
+
+
+# User-Agent for outbound fetches. First-party (we do not import pydantic-ai's version string).
+_USER_AGENT = 'calfkit-web-fetch'
+
+
+def create_async_http_client(*, timeout: int = 30, connect: int = 5) -> httpx.AsyncClient:
+    """Build a fresh `httpx.AsyncClient` (calfkit port of pydantic-ai's factory, §4).
+
+    The split `connect=5` timeout is the load-bearing config preserved from upstream;
+    `safe_download` sets its own per-hop `follow_redirects=False`. A new client per call
+    (closed via `async with`) — no global reuse. Kept module-level so tests can patch it.
+    """
+    return httpx.AsyncClient(
+        timeout=httpx.Timeout(timeout=timeout, connect=connect),
+        headers={'User-Agent': _USER_AGENT},
+    )
+
+
+class ResponseTooLargeError(Exception):
+    """Raised when a response body exceeds `MAX_FETCH_BYTES` while streaming.
+
+    Bodies are streamed and counted as *decompressed* bytes; the download is aborted before
+    the whole body is buffered, bounding memory on the single-worker event loop (§5).
+    """
 
 # Private IP ranges that should be blocked by default (i.e. unless allow_local=True).
 # IPv6 transition forms (6to4, NAT64, IPv4-mapped/-compatible, ISATAP) are not listed here;
@@ -117,6 +160,11 @@ _CLOUD_METADATA_IPV6: frozenset[ipaddress.IPv6Address] = frozenset(
 _MAX_REDIRECTS = 10
 _DEFAULT_TIMEOUT = 30  # seconds
 _SENSITIVE_HEADERS = frozenset(('authorization', 'cookie', 'proxy-authorization'))
+
+# Hard ceiling on a fetched body, enforced WHILE streaming the final hop (§5). Counted on
+# decompressed bytes from `iter_bytes()`, so it bounds in-memory size regardless of a
+# missing/compressed Content-Length. Distinct from the engine's downstream 50k *char* cap.
+MAX_FETCH_BYTES = 5 * 1024 * 1024  # 5 MiB
 
 
 @dataclass
@@ -466,11 +514,14 @@ async def safe_download(
                 Checked on every hop including redirects.
 
     Returns:
-        The httpx.Response object.
+        The httpx.Response object. Its body has already been read (drained inside the client
+        context), capped at `MAX_FETCH_BYTES`, so `.content`/`.text` are immediately available
+        with the upstream charset resolution preserved.
 
     Raises:
         ValueError: If the URL fails SSRF validation, domain validation,
                 or too many redirects occur.
+        ResponseTooLargeError: If the (decompressed) body exceeds `MAX_FETCH_BYTES`.
         httpx.HTTPStatusError: If the response has an error status code.
     """
     current_url = url
@@ -498,36 +549,63 @@ async def safe_download(
             request_headers: dict[str, str] = {k: v for k, v in effective_headers.items() if k.lower() != 'host'}
             request_headers['Host'] = resolved.hostname
 
-            # Make request with Host header set to original hostname
-            response = await client.get(
+            # Stream every hop (§5). We do NOT know a hop is final until we read `is_redirect`,
+            # so the request body is consumed INSIDE the guard, with the byte cap enforced
+            # before any decode/markdownify. On a redirect we never touch the body; the context
+            # manager closes the connection and we re-validate the next hop exactly as before.
+            async with client.stream(
+                'GET',
                 request_url,
                 headers=request_headers,
                 extensions=extensions,
                 follow_redirects=False,
+            ) as response:
+                # Read headers / redirect status BEFORE any body read.
+                if response.is_redirect:
+                    redirects_followed += 1
+                    if redirects_followed > max_redirects:
+                        raise ValueError(
+                            f'Too many redirects ({redirects_followed}). Maximum allowed: {max_redirects}'
+                        )
+
+                    # Get redirect location
+                    location = response.headers.get('location')
+                    if not location:
+                        raise ValueError('Redirect response missing Location header')
+
+                    current_url = resolve_redirect_url(current_url, location)
+
+                    # Strip sensitive headers on cross-origin redirects (RFC 7235)
+                    redirect_hostname = urlparse(current_url).hostname
+                    if redirect_hostname != original_hostname:
+                        effective_headers = {
+                            k: v for k, v in effective_headers.items() if k.lower() not in _SENSITIVE_HEADERS
+                        }
+
+                    # Do NOT read the redirect body — let the context close it — and continue.
+                    continue
+
+                # Final (non-redirect) hop: drain the body with a running cap. `iter_bytes()`
+                # yields decompressed bytes, so this bounds memory regardless of Content-Length.
+                chunks: list[bytes] = []
+                total = 0
+                async for chunk in response.aiter_bytes():
+                    total += len(chunk)
+                    if total > MAX_FETCH_BYTES:
+                        raise ResponseTooLargeError(
+                            f'Response body exceeds the maximum of {MAX_FETCH_BYTES} bytes.'
+                        )
+                    chunks.append(chunk)
+                body = b''.join(chunks)
+
+            # Rebuild a detached, body-loaded response OUTSIDE the stream/client context so the
+            # caller can read `.content`/`.text` (charset resolved by httpx, no forced UTF-8)
+            # after the connection/client closes.
+            result = httpx.Response(
+                status_code=response.status_code,
+                headers=response.headers,
+                content=body,
+                request=response.request,
             )
-
-            # Check if we need to follow a redirect
-            if response.is_redirect:
-                redirects_followed += 1
-                if redirects_followed > max_redirects:
-                    raise ValueError(f'Too many redirects ({redirects_followed}). Maximum allowed: {max_redirects}')
-
-                # Get redirect location
-                location = response.headers.get('location')
-                if not location:
-                    raise ValueError('Redirect response missing Location header')
-
-                current_url = resolve_redirect_url(current_url, location)
-
-                # Strip sensitive headers on cross-origin redirects (RFC 7235)
-                redirect_hostname = urlparse(current_url).hostname
-                if redirect_hostname != original_hostname:
-                    effective_headers = {
-                        k: v for k, v in effective_headers.items() if k.lower() not in _SENSITIVE_HEADERS
-                    }
-
-                continue
-
-            # Not a redirect, we're done
-            response.raise_for_status()
-            return response
+            result.raise_for_status()
+            return result
