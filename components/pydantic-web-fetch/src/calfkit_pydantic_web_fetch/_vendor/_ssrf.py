@@ -162,7 +162,7 @@ _DEFAULT_TIMEOUT = 30  # seconds
 _SENSITIVE_HEADERS = frozenset(('authorization', 'cookie', 'proxy-authorization'))
 
 # Hard ceiling on a fetched body, enforced WHILE streaming the final hop (§5). Counted on
-# decompressed bytes from `iter_bytes()`, so it bounds in-memory size regardless of a
+# decompressed bytes from `aiter_bytes()`, so it bounds in-memory size regardless of a
 # missing/compressed Content-Length. Distinct from the engine's downstream 50k *char* cap.
 MAX_FETCH_BYTES = 5 * 1024 * 1024  # 5 MiB
 
@@ -585,7 +585,7 @@ async def safe_download(
                     # Do NOT read the redirect body — let the context close it — and continue.
                     continue
 
-                # Final (non-redirect) hop: drain the body with a running cap. `iter_bytes()`
+                # Final (non-redirect) hop: drain the body with a running cap. `aiter_bytes()`
                 # yields decompressed bytes, so this bounds memory regardless of Content-Length.
                 chunks: list[bytes] = []
                 total = 0
@@ -601,9 +601,20 @@ async def safe_download(
             # Rebuild a detached, body-loaded response OUTSIDE the stream/client context so the
             # caller can read `.content`/`.text` (charset resolved by httpx, no forced UTF-8)
             # after the connection/client closes.
+            #
+            # `body` is the FINAL DECOMPRESSED payload (aiter_bytes yields decoded bytes), so the
+            # original transfer/encoding framing no longer applies. We must drop `content-encoding`
+            # (else httpx re-runs gunzip/brotli on already-decompressed bytes -> DecodingError on
+            # every gzip/br/deflate page), the stale compressed `content-length`, and any
+            # `transfer-encoding`. httpx sets the correct length from `content=`. Everything else
+            # (content-type + charset, etc.) is preserved. Header names are case-insensitive.
+            rebuilt_headers = httpx.Headers(response.headers)
+            rebuilt_headers.pop('content-encoding', None)
+            rebuilt_headers.pop('content-length', None)
+            rebuilt_headers.pop('transfer-encoding', None)
             result = httpx.Response(
                 status_code=response.status_code,
-                headers=response.headers,
+                headers=rebuilt_headers,
                 content=body,
                 request=response.request,
             )
