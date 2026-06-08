@@ -15,7 +15,7 @@ license_file: LICENSE
 #   todo:        per-session task list Operator (id-keyed; merge/replace; durable Store deferred -- Faust table)
 provides: [shell, files, web_search, web_extract, todo]
 
-# Vendored file set = 42 .py files (the bounded transitive closure with the upstream's
+# Vendored file set = the bounded transitive closure of .py files (with the upstream's
 # app-runtime packages treated as a shim boundary). The authoritative list is the
 # "verbatim vendor" git commit (`git show --stat`) and design doc §3. High level:
 files:

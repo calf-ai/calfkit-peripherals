@@ -18,7 +18,7 @@ Exposes (over the calfkit Kafka contract — see `NODE.md`, Stage D):
 
 ## Structure
 
-- `src/calfkit_hermes/_vendor/` — the 42-file vendored upstream tree (import-rewritten).
+- `src/calfkit_hermes/_vendor/` — the vendored upstream tree (import-rewritten).
 - `src/calfkit_hermes/_shims/` — thin replacements for hermes' app-runtime edges.
 - `src/calfkit_hermes/node/` — calfkit Kafka adapter + tool wrappers (Stage D — deferred).
 - `tests/` — vendored upstream tests (regression) + adapter tests.
