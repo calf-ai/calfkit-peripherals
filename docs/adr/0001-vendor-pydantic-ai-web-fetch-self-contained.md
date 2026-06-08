@@ -20,11 +20,15 @@ Vendor the SSRF guard (`_ssrf.py`) and the fetch/content-type engine as
 **inlined** so the live dependencies are only stdlib + `httpx` + `markdownify`,
 with **no `pydantic-ai` dependency**.
 
-Do **not** vendor the agent-tool glue as live code. Keep the verbatim upstream
-files under `reference/upstream/` as documentation only, so the eventual calfkit
-port can reconnect the glue against calfkit's pydantic-ai runtime without
-re-fetching upstream. Binary content is returned from live code as a neutral
-`bytes + media_type`, not pydantic's `BinaryContent`.
+Do **not** vendor the agent-tool glue as live code, and do **not** keep verbatim
+reference files (a non-imported, non-tested snapshot rots and drifts from both
+upstream and calfkit's runtime). Instead, record the glue as a short **port-note**
+in `NODE.md`: the four symbols (`web_fetch_tool` / `Tool` / `ModelRetry` /
+`BinaryContent`) and the `bytes + media_type → BinaryContent` re-wrap shape, so the
+eventual calfkit port reconnects the glue against calfkit's *live* pydantic-ai
+runtime. The `METADATA.yaml` SHA + upstream path is the re-sync pointer. Binary
+content is returned from live code as a neutral `bytes + media_type`, not pydantic's
+`BinaryContent`.
 
 ## Considered and rejected
 
@@ -41,6 +45,8 @@ re-fetching upstream. Binary content is returned from live code as a neutral
 
 The shipped `web_fetch` package has zero `pydantic-ai` dependency and is
 re-syncable against a pinned tag (v1.106.0). The pydantic glue is reattached at
-port time from the reference files. We also vendor `test_ssrf.py` — the regression
-assurance for the CVE chain — so re-syncs stay safe. See ADR-0002 for the parallel
+port time from the `NODE.md` port-note against calfkit's live pydantic-ai. We also
+vendor `test_ssrf.py` — the CVE-chain regression assurance — though as a
+**port-and-rewrite** (the streaming-cap restructure changes ~23 `client.get` mock
+sites; see the design doc §7-C2), not a verbatim copy. See ADR-0002 for the parallel
 "vendor faithfully, integrate later" posture on config.
