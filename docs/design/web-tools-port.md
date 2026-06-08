@@ -1,6 +1,6 @@
 # Design: Web tools (`web_fetch` / `web_search`) — vendoring & calfkit integration
 
-**Status:** Draft (grill complete; **deep-review round 1 done — spec amended below, see §7**). Two simplifications pending user decision (glue-as-reference, config resolver). Sources confirmed + closures verified against upstream at the pinned versions.
+**Status:** Draft (grill complete; **deep-review round 1 done + both simplifications resolved — see §7**). Ready to implement; remaining: component naming rubber-stamp + optional round-2 confirmation. Sources confirmed + closures verified against upstream at the pinned versions.
 **Date:** 2026-06-08
 **Owners:** Ryan
 **Decisions:** [ADR-0001](../adr/0001-vendor-pydantic-ai-web-fetch-self-contained.md) (glue-as-reference), [ADR-0002](../adr/0002-per-vendor-config-now-unify-later.md) (per-vendor config).
@@ -63,10 +63,11 @@ polyglot Kafka-node components; `_vendor/` (verbatim + import-rewritten), `_shim
 
 **Tests** (`tests/`): vendor `test_ssrf.py` (regression for the CVE chain).
 
-**Reference only** (`reference/upstream/`, not packaged, not imported): verbatim
-`_ssrf.py` + `common_tools/web_fetch.py` — preserves the pydantic glue
-(`web_fetch_tool()` / `Tool` / `ModelRetry` / `BinaryContent`) so the calfkit port can
-reconnect it against calfkit's pydantic-ai runtime without re-fetching upstream.
+**Glue port-note** (in `NODE.md`, not a file copy — §7-M1 resolved): a ≤10-line note
+recording the four pydantic glue symbols (`web_fetch_tool()` / `Tool` / `ModelRetry` /
+`BinaryContent`) and the `bytes + media_type → BinaryContent` re-wrap shape, so the
+calfkit port reconnects the glue against calfkit's *live* pydantic-ai runtime. The
+`METADATA.yaml` SHA + upstream path is the re-sync pointer; no `reference/` files.
 
 ### 3.3 Self-containment — inline these private helpers
 `_ssrf.py` and the engine reach into pydantic-ai private modules whose home files are
@@ -166,11 +167,13 @@ The provider `search()` path is **synchronous/inline** upstream; the node consum
 offload it via `asyncio.to_thread` (extract already has the `iscoroutinefunction`/`to_thread`
 dispatch). Small adapter glue, not vendored code.
 
-### 4.4 Node adapter (`node/`, port phase)
-Registers the shipped providers explicitly at startup; resolves the active provider via the
-vendored registry (hermes `config.yaml`); for `extract`, runs `async_is_safe_url` over the
-URLs first; offloads sync `search`; returns the provider's already-`{success, data}`-shaped
-result over the Kafka contract. Update `NODE.md` with the `web_search` contract.
+### 4.4 Node adapter (`node/`, port phase) — env-based selection (§7-M2 resolved)
+Registers the shipped providers explicitly at startup; selects the active provider from an
+env var (e.g. `WEB_SEARCH_BACKEND`) → `registry.get_provider(name)` directly (the vendored
+`config.yaml` resolver stays dormant, not called); for `extract`, runs `async_is_safe_url`
+over the URLs first; offloads sync `search` via `asyncio.to_thread`; returns the provider's
+already-`{success, data}`-shaped result over the Kafka contract. Update `NODE.md` with the
+`web_search` contract.
 
 ---
 
@@ -181,8 +184,9 @@ Across both tracks, first-party code is minimal: the ~30 LOC of inlined leaf hel
 Everything else is vendored prod-grade code.
 
 ## 6. Open items / next steps
-1. **User decision on two simplifications** (§7-M1, §7-M2) before scaffolding.
-2. Resolve component naming (§7-L: dir `pydantic-web` ↔ pkg `calfkit_pydantic_web`).
+1. ~~User decision on two simplifications~~ — **DONE** (§7-M1/M2 resolved).
+2. Rubber-stamp component naming: dir `components/pydantic-web-fetch/` ↔ pkg
+   `calfkit-pydantic-web-fetch` / `calfkit_pydantic_web_fetch` (make dir↔pkg consistent).
 3. (Optional) round-2 confirmation review of the amended spec → converge to no criticals.
 4. Implement per `project-structure.md` §"How to add a new port" + TDD the `node/` adapters.
 5. Append both components to `THIRD_PARTY_NOTICES.md`; record provenance + CVE lineage +
@@ -228,21 +232,15 @@ Verified against upstream **at the pinned versions** (pydantic-ai `v1.106.0`; he
 - Streaming threshold: pin as a named constant (one value), assert it fires before
   decode+markdownify.
 
-**MEDIUM — TWO SIMPLIFICATIONS PENDING USER DECISION (revise earlier grill calls):**
-- **M1 — glue-as-reference whole files may be cruft.** Since calfkit *runs* pydantic-ai, the
-  4-symbol glue (`web_fetch_tool`/`Tool`/`ModelRetry`/`BinaryContent`) is re-derivable from
-  calfkit's live runtime at port time; a frozen `reference/upstream/web_fetch.py` snapshot
-  rots (not imported, not tested). **Proposed:** replace the reference files with a ≤10-line
-  "Port note" recording the 4 symbols + the `bytes+media_type → BinaryContent` re-wrap shape;
-  the METADATA SHA + upstream path is the re-sync pointer. *(Revises the earlier "keep glue as
-  reference files" call — the doc note serves the same stated goal more durably.)*
-- **M2 — vendoring the config-selection layer (ADR-0002) may be throwaway.** Once the node
-  registers providers explicitly, selection is `os.environ[...]` → the registry's in-memory
-  `Dict` lookup; `_resolve`/`get_active_*`/`_read_config_key` encode hermes-CLI semantics
-  calfkit never runs (and are inert under the `{}` stub). **Proposed:** keep the in-memory
-  registry (real value), drop the resolver, select by env in the node (~10 LOC). *(Revises
-  ADR-0002; still "per-vendor config now, unify later" — just first-party glue, not vendored
-  hermes-CLI config.)*
+**MEDIUM — TWO SIMPLIFICATIONS — RESOLVED (user decided 2026-06-08):**
+- **M1 — glue-as-reference → port-note. RESOLVED: port-note.** No `reference/upstream/`
+  files; the four glue symbols + re-wrap shape live as a ≤10-line note in `NODE.md`
+  (§3.2). The frozen snapshot would have rotted; calfkit re-derives the glue from its live
+  pydantic-ai at port time. → ADR-0001 updated.
+- **M2 — config resolver. RESOLVED: vendor the registry whole (no surgery), node selects by
+  env.** `_resolve`/`get_active_*`/`config.yaml` stay vendored but **dormant**; the node
+  reads an env var → `registry.get_provider(name)` (§4.4). Avoids relying on hermes-CLI
+  config semantics calfkit would later override. → ADR-0002 updated.
 
 **LOW:** component naming dir↔pkg mismatch (→ `pydantic-web`); `NODE.md` should state returned
 bodies are **untrusted by contract** (calfcord owns wrapping — boundary affirmed); record both

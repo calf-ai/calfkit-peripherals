@@ -12,12 +12,14 @@ the web-tools grill: unify config now, or keep each source's mechanism?
 
 ## Decision
 
-For now, **each component keeps its vendor-specific config mechanism as vendored**.
-Hermes keeps its `config.yaml` keys and the already-shimmed `hermes_cli.config`
-loader — i.e. we vendor the registry's config-selection layer (`_resolve` /
-`get_active_*` / `_read_config_key`) whole, not just its in-memory provider map. We
-do **not** build a unified config layer yet. Later, a single calfkit config will
-aggregate and drive all tools by feeding each source the config shape it expects.
+For now, **each component keeps its vendor-specific config as vendored** — we vendor
+hermes' registry **whole**, including its `config.yaml` resolver (`_resolve` /
+`get_active_*` / `_read_config_key`) and the already-shimmed `hermes_cli.config`
+loader, faithfully and without surgery. **But the node does not call that resolver:**
+it selects the active provider from an env var and calls `registry.get_provider(name)`
+directly (~10 LOC), leaving the `config.yaml` selection vendored-but-dormant. We do
+**not** build a unified config layer yet. Later, a single calfkit config will drive
+provider selection across all sources.
 
 ## Why
 
@@ -28,6 +30,8 @@ faithfully, integrate later" posture (cf. ADR-0001's glue-as-reference).
 
 ## Consequences
 
-Short-term, controlling tools means touching N per-source configs; the unification
-is a known, deferred follow-up that lands at the calfkit integration boundary, not
-inside any one vendored component.
+The registry is vendored faithfully (no surgery), but its config.yaml resolver is
+dormant — short-term provider selection is first-party env glue the node controls,
+not hermes-CLI semantics calfkit would later have to override. The unification is a
+known, deferred follow-up that lands at the calfkit integration boundary, not inside
+any one vendored component.
