@@ -142,7 +142,7 @@ class WebFetchLocalTool:
             else:
                 content = text
         else:
-            return FetchedBinary(data=response.content, media_type=media_type or 'application/octet-stream')
+            return FetchedBinary(data=response.content, media_type=media_type)
 
         content = _clean_whitespace(content)
 

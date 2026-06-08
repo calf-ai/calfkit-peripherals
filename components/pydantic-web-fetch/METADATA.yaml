@@ -16,14 +16,14 @@ copyright: "Pydantic Services Inc."
 #   web_fetch: SSRF-safe URL fetch -> cleaned markdown (or neutral binary)
 provides: [web_fetch]
 
-# PLANNED vendored file set — NOTHING is vendored yet (Stage A is scaffold-only).
-# These four upstream files are copied verbatim in Stage B, then port-rewritten in
+# Vendored file set (applied Stage B, port-rewritten Stage B/C).
+# These four upstream files were copied verbatim in Stage B, then port-rewritten in
 # Stage B/C. Paths are relative to the upstream repo root @ the pinned revision.
 files:
-  - "pydantic_ai_slim/pydantic_ai/_ssrf.py             # to vendor in Stage B (~533 LOC; load-bearing SSRF guard) -> _vendor/_ssrf.py"
-  - "pydantic_ai_slim/pydantic_ai/common_tools/web_fetch.py  # to vendor in Stage B (whole file ~187 LOC; trim to ~95-100 LOC core in Stage C) -> _vendor/ engine"
-  - "tests/test_ssrf.py                                 # to vendor in Stage B (951 LOC SSRF regression suite) -> tests/"
-  - "tests/test_web_fetch.py                            # to vendor in Stage B (~501 LOC engine regression suite) -> tests/"
+  - "pydantic_ai_slim/pydantic_ai/_ssrf.py             # vendored (Stage B; ~533 LOC; load-bearing SSRF guard) -> _vendor/_ssrf.py"
+  - "pydantic_ai_slim/pydantic_ai/common_tools/web_fetch.py  # vendored (Stage B; whole file ~187 LOC), trimmed to reusable core (Stage C) -> _vendor/ engine"
+  - "tests/test_ssrf.py                                 # vendored (Stage B; 951 LOC SSRF regression suite) -> tests/"
+  - "tests/test_web_fetch.py                            # vendored (Stage B; ~501 LOC engine regression suite) -> tests/"
 
 # Deliberately NOT vendored — the pydantic-ai agent framework. We inline the few
 # leaf helpers (see local_modifications) instead of dragging the framework in (ADR-0001).
@@ -53,7 +53,7 @@ cut:
 #     sources, not a lift from any single third project.
 secondary_origins: []   # none found — independently authored; MIT-only stands (see H3 note above)
 
-# PLANNED local modifications — applied in Stage B/C, recorded here ahead of time.
+# Local modifications (applied in Stage B/C).
 local_modifications:
   # --- Self-containment: inline private helpers (§4), no pydantic-ai dependency ---
   - "Inline run_in_executor (from pydantic_ai._utils): re-implement DNS thread-offload over asyncio.to_thread (NOT a verbatim lift — upstream uses ContextVars + anyio). Keep a module-level patchable name on _vendor._ssrf (tests monkeypatch by string)."
@@ -62,14 +62,14 @@ local_modifications:
   # --- Glue dropped to NODE.md port-note (§3 / §4 / ADR-0001) ---
   - "Drop the 4 pydantic glue symbols (web_fetch_tool(), Tool, ModelRetry, BinaryContent) -> recorded in NODE.md as a <=10-line glue port-note; reconnected against calfkit's live pydantic-ai at port time. No frozen reference/ snapshot."
   # --- §5 streaming restructure (security-critical fork-point) ---
-  - "§5 streaming byte-cap restructure of safe_download (APPLIED Stage C): body consumption moved INSIDE the guard; per-hop `async with client.stream(GET, ...)`; on redirect the body is NOT read + continue (re-validate next hop, strip cross-origin sensitive headers); on the non-redirect hop drain `aiter_bytes()` with a running total and abort with typed ResponseTooLargeError once total > MAX_FETCH_BYTES = 5*1024*1024 (5 MiB), BEFORE decode/markdownify; charset/encoding preserved by returning a detached, body-loaded httpx.Response rebuilt from the capped bytes + original headers (httpx resolves .text charset — no forced UTF-8). Modified vendored SECURITY code: captured as the cleanly re-appliable patches/0001-ssrf-streaming-byte-cap.patch (verified `git apply --check` against the verbatim baseline)."
+  - "§5 streaming byte-cap restructure of safe_download (APPLIED Stage C): body consumption moved INSIDE the guard; per-hop `async with client.stream(GET, ...)`; on redirect the body is NOT read + continue (re-validate next hop, strip cross-origin sensitive headers); on the non-redirect hop drain `aiter_bytes()` with a running total and abort with typed ResponseTooLargeError once total > MAX_FETCH_BYTES = 5*1024*1024 (5 MiB), BEFORE decode/markdownify; charset/encoding preserved by returning a detached, body-loaded httpx.Response rebuilt from the capped DECOMPRESSED bytes + original headers minus content-encoding/content-length/transfer-encoding (those no longer describe the decoded body; httpx resolves .text charset and sets the correct length — no forced UTF-8, no double-gunzip). Modified vendored SECURITY code: captured as the cleanly re-appliable patches/0001-ssrf-streaming-byte-cap.patch (verified `git apply --check` against the verbatim baseline)."
   - "Add neutral first-party @dataclass FetchedBinary(data: bytes, media_type: str) + exception WebFetchError in src/calfkit_pydantic_web_fetch/results.py (at the engine/node boundary, NOT in _vendor/); replace upstream BinaryContent (§6) and ModelRetry (§4) respectively. The engine raises WebFetchError on fetch failure; the node maps it to error:."
   - "Trim the engine (_vendor/common_tools/web_fetch.py) to its reusable core (content-type gating, markdownify(strip=[img,script,style]), <title> extraction, JSON fencing, FetchedBinary binary handling, 50k char cap, Accept: text/markdown). Dropped web_fetch_tool()/Tool. Rewrote `from typing_extensions import Any, TypedDict` to stdlib `from typing import TypedDict` (Any unused after dropping the Tool[Any] factory) — typing_extensions dependency removed from pyproject.toml (requires-python >= 3.11)."
   # --- §3.1 by-hand import-rewrite mapping (<=4 files; no scripts/rewrite_imports.py) ---
   - "Import-rewrite (§3.1, by hand): _ssrf.py -> none after inlining (stdlib + httpx only)."
   - "Import-rewrite (§3.1, by hand): engine -> `from pydantic_ai._ssrf import safe_download` => `from calfkit_pydantic_web_fetch._vendor._ssrf import safe_download` (sibling); drop glue imports; inline is_text_like_media_type."
   - "Import-rewrite (§3.1, by hand): tests -> `pydantic_ai._ssrf` / `pydantic_ai.common_tools.web_fetch` => the vendored module paths; keep run_in_executor / create_async_http_client as module-level patchable names on _vendor._ssrf (tests monkeypatch them by string)."
-  - "Port-rewrite both test files alongside the §5 restructure: reshape mocks to streaming async context managers (client.stream + async-iterator iter_bytes()); repoint monkeypatch targets; retain per-redirect-hop revalidation coverage on the streaming path; add byte-cap-abort + before-markdownify + non-UTF-8-charset tests."
+  - "Port-rewrite both test files alongside the §5 restructure: reshape mocks to streaming async context managers (client.stream + async-iterator aiter_bytes()); repoint monkeypatch targets; retain per-redirect-hop revalidation coverage on the streaming path; add byte-cap-abort + before-markdownify + non-UTF-8-charset tests."
 
 # CVE lineage that motivates this vendor (the regression tests are the assurance):
 notes: >

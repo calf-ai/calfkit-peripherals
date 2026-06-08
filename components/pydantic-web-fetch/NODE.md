@@ -18,7 +18,7 @@ Pinned now — independent of the Kafka framing (which is deferred, see below).
   - **binary** — `{ data, media_type }` (neutral binary; over Kafka: base64 or raw bytes,
     mind broker `max.message.bytes`);
   - **error** — an `error:`-prefixed `str`.
-- **Error / edge semantics:** the guard (`safe_stream`/`safe_download`) *raises* typed errors
+- **Error / edge semantics:** the guard (`safe_download`) *raises* typed errors
   — SSRF-blocked, `ResponseTooLargeError` (oversize, see §5 byte cap), timeout,
   redirect-limit-exceeded, and `httpx` / `ValueError` — and the node maps each to the
   `error:` reply. HTTP error statuses (4xx/5xx) → `error:` (not the body). Charset is

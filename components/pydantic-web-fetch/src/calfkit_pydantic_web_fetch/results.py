@@ -22,7 +22,7 @@ class WebFetchError(Exception):
     """
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class FetchedBinary:
     """Binary (non-text) fetch result.
 
@@ -33,5 +33,5 @@ class FetchedBinary:
     data: bytes
     """The raw response body."""
 
-    media_type: str
-    """The response media type (e.g. ``application/pdf``)."""
+    media_type: str = 'application/octet-stream'
+    """The response media type (e.g. ``application/pdf``); defaults to ``application/octet-stream``."""
