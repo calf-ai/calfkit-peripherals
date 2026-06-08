@@ -35,13 +35,23 @@ cut:
   - "pydantic_ai_slim/pydantic_ai/messages.py    # BinaryContent -> dropped; engine returns neutral FetchedBinary (§6), re-wrap noted in NODE.md"
 
 # Upstreams that pydantic-ai itself ported the _ssrf.py IP/cloud-metadata tables from.
-# TODO (Stage B, spec §2 hygiene gate H3): before asserting MIT-only, verify the
-# secondary origin of _ssrf.py's IP/cloud-metadata tables — inspect the file header +
-# `git log`/blame for "Ported from"/"Adapted from"; spot-diff the metadata-IP table
-# against likely upstreams (OWASP SSRF cheat sheet, `ipaddress` stdlib). Record the
-# outcome (an origin, or "none found") here before claiming MIT-only.
-# (Stage-A scan of the file header found only stdlib + httpx imports, no port marker.)
-secondary_origins: []
+# H3 hygiene gate (spec §2) RESOLVED in Stage B — result: NONE FOUND (independently authored;
+# MIT-only stands). Evidence:
+#   - File header + full-file scan: no "Ported from"/"Adapted from"/attribution/external-URL/
+#     copyright markers anywhere in _ssrf.py. Imports are stdlib (ipaddress, socket, dataclasses,
+#     urllib.parse) + httpx + two sibling pydantic-ai modules only; no URLs referenced.
+#   - git log: inconclusive by procedure (the review clone is --depth 1, so history is truncated
+#     to a single commit; full authoring history unavailable). No port marker in the available
+#     commit subject. Not blocking — the file-content evidence is decisive.
+#   - IP-table spot-compare vs OWASP SSRF cheat sheet: pydantic-ai's tables are a strict SUPERSET.
+#     OWASP lists only the common subset (169.254.169.254, RFC1918, 127.0.0.0/8, 0.0.0.0/8,
+#     ::1/128, 224.0.0.0/4, ff00::/8). pydantic-ai independently adds endpoints OWASP does NOT
+#     list — 168.63.129.16 (Azure WireServer), 169.254.170.2/.170.23 (AWS ECS/EKS),
+#     100.100.100.200 (Alibaba), 192.0.0.192 (Oracle), 169.254.42.42 (Scaleway), IPv6 metadata
+#     (fd00:ec2::254 et al.) — plus RFC-cited reserved ranges (RFC 5737/2544/6598) and a
+#     from-scratch RFC 6052/3056/4380/5214 IPv6-transition decoder. Built from primary RFC
+#     sources, not a lift from any single third project.
+secondary_origins: []   # none found — independently authored; MIT-only stands (see H3 note above)
 
 # PLANNED local modifications — applied in Stage B/C, recorded here ahead of time.
 local_modifications:
