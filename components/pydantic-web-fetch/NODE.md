@@ -14,15 +14,19 @@ Pinned now — independent of the Kafka framing (which is deferred, see below).
   - `max_redirects = 10`
   - `timeout = 30` (seconds)
 - **Reply:** exactly one of —
-  - **markdown** — a `str` (cleaned markdown; empty body → empty markdown);
-  - **binary** — `{ data, media_type }` (neutral binary; over Kafka: base64 or raw bytes,
-    mind broker `max.message.bytes`);
-  - **error** — an `error:`-prefixed `str`.
+  - **markdown** — `{ url, title, content }` (the engine's `WebFetchResult`,
+    returned as a plain dict; content is cleaned markdown, truncated at
+    `max_content_length = 50_000` chars with a `[Content truncated]` marker);
+  - **binary** — `{ data_base64, media_type }` (neutral binary, base64-encoded
+    for the JSON envelope; mind broker `max.message.bytes`);
+  - **error** — the node lets `WebFetchError` **propagate**; calfkit converts
+    any raised exception into a structured `FailedToolCall` reply (the agent
+    sees a clean failure, never a hang).
 - **Error / edge semantics:** the guard (`safe_download`) *raises* typed errors
   — SSRF-blocked, `ResponseTooLargeError` (oversize, see §5 byte cap), timeout,
-  redirect-limit-exceeded, and `httpx` / `ValueError` — and the node maps each to the
-  `error:` reply. HTTP error statuses (4xx/5xx) → `error:` (not the body). Charset is
-  preserved per §5 (no forced UTF-8 decode).
+  redirect-limit-exceeded, and `httpx` / `ValueError` — which the engine wraps
+  in `WebFetchError`. HTTP error statuses (4xx/5xx) → `WebFetchError` (not the
+  body). Charset is preserved per §5 (no forced UTF-8 decode).
 
 ## Glue port-note
 
@@ -70,9 +74,19 @@ returns a detached, body-loaded `httpx.Response` with charset preserved. The dif
 verbatim baseline is captured in [`patches/0001-ssrf-streaming-byte-cap.patch`](patches/0001-ssrf-streaming-byte-cap.patch)
 so the fork is re-appliable on re-sync.
 
-## Kafka framing
+## Kafka framing (Stage D — implemented)
 
-**DEFERRED — gated on the calfkit Kafka node contract**, which is repo-wide undefined (the
-same blocker as the hermes shell/file port — see
-[`../../docs/design/shell-file-tool-port.md`](../../docs/design/shell-file-tool-port.md)).
-Topics, envelope, and binary-over-Kafka encoding land in Stage D once that contract exists.
+The node is `calfkit_pydantic_web_fetch.node.web_fetch`, a calfkit
+`ToolNodeDef` built with `@agent_tool` (calfkit ≥ 0.9.0): node id
+`tool_web_fetch`, topics `tool.web_fetch.input` / `tool.web_fetch.output`,
+JSON envelope, schema derived from the function signature (`url: str`,
+required, the only field — matching the §7 contract above). Stateless: no
+tenancy key, scales horizontally.
+
+```python
+from calfkit import Client, Worker
+from calfkit_pydantic_web_fetch.node import web_fetch
+
+await Worker(Client.connect("localhost:9092"), nodes=[web_fetch]).run()
+# or: calfkit run calfkit_pydantic_web_fetch.node:web_fetch
+```

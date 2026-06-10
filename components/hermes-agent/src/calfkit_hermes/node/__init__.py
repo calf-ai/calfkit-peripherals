@@ -10,6 +10,7 @@ Worker — each entry remains its own node (own topics, own identity), not a
 proxy. Stateful nodes are correct at one process per node (ADR-0004).
 """
 
+from calfkit_hermes.node.code import execute_code
 from calfkit_hermes.node.files import patch, read_file, search_files, write_file
 from calfkit_hermes.node.shell import process, terminal
 from calfkit_hermes.node.todo import InMemoryTodoStore, todo
@@ -23,6 +24,7 @@ HERMES_NODES = [
     patch,
     search_files,
     todo,
+    execute_code,
     web_search,
     web_extract,
 ]
@@ -30,6 +32,7 @@ HERMES_NODES = [
 __all__ = [
     "HERMES_NODES",
     "InMemoryTodoStore",
+    "execute_code",
     "patch",
     "process",
     "read_file",

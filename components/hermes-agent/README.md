@@ -20,13 +20,17 @@ Exposes (over the calfkit Kafka contract — see `NODE.md`, Stage D):
 
 - `src/calfkit_hermes/_vendor/` — the vendored upstream tree (import-rewritten).
 - `src/calfkit_hermes/_shims/` — thin replacements for hermes' app-runtime edges.
-- `src/calfkit_hermes/node/` — calfkit Kafka adapter + tool wrappers (Stage D — deferred).
-- `tests/` — vendored upstream tests (regression) + adapter tests.
+- `src/calfkit_hermes/node/` — the calfkit tool nodes (Stage D): one deployable
+  `ToolNodeDef` per tool, thin wrappers over the upstream registry seam.
+- `tests/` — vendored upstream tests (regression) + node-layer tests.
 - `patches/` — re-appliable functional changes to vendored code.
 
 ## Status
 
-Vendored verbatim; import-rewrite + shims in progress on `vendor/hermes-shell-file`.
-**Stage D (Kafka adapter + security + multi-tenancy) is deferred** — see
-[`../../docs/design/shell-file-tool-port.md`](../../docs/design/shell-file-tool-port.md) §6, §12.
-Not yet runnable as a node.
+**Stage D — complete.** All ten tools are deployable calfkit nodes
+(`from calfkit_hermes.node import terminal, ..., HERMES_NODES`) with in-memory
+multitenancy keyed per calling agent (ADR-0004). See `NODE.md` for the node
+contract, deps/resource wiring, configuration, and trust model;
+[`../../docs/design/node-port.md`](../../docs/design/node-port.md) for the design.
+Durable state and security hardening (env allowlist, sandbox enforcement) remain
+deferred — [`../../docs/design/shell-file-tool-port.md`](../../docs/design/shell-file-tool-port.md) §6.1.

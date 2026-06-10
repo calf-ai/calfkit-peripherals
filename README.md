@@ -26,5 +26,15 @@ keep upstream code import-rewritten under `_vendor/`.
 
 ## Status
 
-Foundation + conventions established on `main`. The first port (hermes-agent shell+file)
-is in progress on a branch — see [`docs/design/shell-file-tool-port.md`](docs/design/shell-file-tool-port.md).
+**Stage D landed:** all eleven vendored tools are deployable calfkit tool nodes
+(calfkit ≥ 0.9.0, 1:1 tool→node, in-memory multitenancy keyed per calling agent
+— ADR-0004). Import-and-deploy:
+
+```python
+from calfkit_hermes.node import HERMES_NODES          # terminal, process, files, todo, web, execute_code
+from calfkit_pydantic_web_fetch.node import web_fetch
+```
+
+See [`docs/design/node-port.md`](docs/design/node-port.md) and each component's
+`NODE.md` for contracts, wiring, and the trust model. Durable state and security
+hardening remain deferred.

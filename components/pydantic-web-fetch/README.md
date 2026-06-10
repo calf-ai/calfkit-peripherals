@@ -25,10 +25,9 @@ Exposes (over the calfkit Kafka contract — see `NODE.md`):
 
 ## Status
 
-**Stage A — scaffold only.** No upstream source is vendored yet. `METADATA.yaml` records
-the pinned provenance and the *planned* vendor set + local modifications; the `_vendor/`,
-`node/`, and `tests/` trees hold empty package markers. Stage B vendors verbatim, Stage C
-adapts (inline helpers, streaming byte-cap, port-rewrite tests), Stage D adds the Kafka
-node adapter (gated on the calfkit Kafka contract). See
-[`../../docs/design/web-fetch-tool-port.md`](../../docs/design/web-fetch-tool-port.md).
-Not yet runnable as a node.
+**Stage D — complete.** Stages B/C vendored + adapted the engine (inline helpers,
+streaming byte-cap, port-rewrite tests; 225 regression tests). Stage D added the
+calfkit tool node: `calfkit_pydantic_web_fetch.node.web_fetch` is a deployable
+`ToolNodeDef` (calfkit ≥ 0.9.0) — see `NODE.md` for the contract and
+[`../../docs/design/node-port.md`](../../docs/design/node-port.md) for the
+node-layer design.
