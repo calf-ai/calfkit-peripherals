@@ -11,6 +11,7 @@ version = "0.0.0"
 description = "calfkit node component: pydantic-ai SSRF-safe web_fetch tool (vendored, MIT)"
 requires-python = ">=3.11"          # vendored code targets 3.11+ (stdlib typing over typing_extensions)
 dependencies = [
+    "calfkit>=0.9.0,<0.10",
     "httpx>=0.27",                  # the async HTTP client used by the SSRF guard + engine
     "markdownify>=1.2",             # HTML -> markdown cleaning in the fetch engine
     # typing_extensions dropped in Stage C: the engine's `typing_extensions.{Any, TypedDict}`
