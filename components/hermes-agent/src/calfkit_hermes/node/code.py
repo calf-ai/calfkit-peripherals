@@ -71,9 +71,9 @@ def execute_code(ctx: ToolContext, code: str) -> dict | str:
 
     Hermes tools are imported with ``from hermes_tools import ...`` (e.g.
     terminal, read_file, write_file, patch, search_files). terminal() is
-    foreground-only (no background or pty). Scripts run in the session's working
-    directory with the active venv's python, so project deps and relative paths
-    work like in terminal().
+    foreground-only (no background or pty). Scripts run in the node's working
+    directory with the active venv's python; in-script tool calls (terminal,
+    file tools) operate in your own session's shell environment.
 
     Limits: 5-minute timeout, 50KB stdout cap, max 50 tool calls per script.
     Print your final result to stdout. Use Python stdlib (json, re, math, csv,
@@ -85,11 +85,26 @@ def execute_code(ctx: ToolContext, code: str) -> dict | str:
             ``from hermes_tools import ...`` and print your final result to
             stdout.
     """
+    from calfkit_hermes._vendor.tools.code_execution_tool import SANDBOX_ALLOWED_TOOLS
+
+    enabled = _enabled_tools()
+    # Fail closed: upstream expands an EMPTY intersection with
+    # SANDBOX_ALLOWED_TOOLS back to the FULL set — a typo'd or
+    # non-sandboxable-only override would silently grant every tool.
+    if not (enabled & SANDBOX_ALLOWED_TOOLS):
+        return {
+            "error": (
+                "EXECUTE_CODE_ENABLED_TOOLS resolves to no sandbox-callable tools "
+                f"(got: {sorted(enabled)}; sandbox-callable: "
+                f"{sorted(SANDBOX_ALLOWED_TOOLS)}). Refusing to run rather than "
+                "fall back to the full tool set."
+            )
+        }
     return dispatch(
         "execute_code",
         {"code": code},
         session_key=session_key(ctx),
         # Upstream types this Optional[List[str]] and rebuilds a set internally;
         # pass a list to match the documented contract.
-        enabled_tools=sorted(_enabled_tools()),
+        enabled_tools=sorted(enabled),
     )

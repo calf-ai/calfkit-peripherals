@@ -1,6 +1,9 @@
 # Vendor the hermes todo tool as a stateless Operator; defer a Kafka-native Store
 
-**Status:** accepted · 2026-06-08
+**Status:** accepted · 2026-06-08 · amended by ADR-0004 (the in-memory Store is
+the *shipped* Stage-D variant by owner decision, not dev-only; the Faust table
+remains deferred) · the constructor-seed seam landed as
+`patches/0002-todo-store-constructor-seed.patch`
 
 ## Context
 

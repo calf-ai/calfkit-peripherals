@@ -77,6 +77,48 @@ class TestSchemaSanity:
         # ctx must be hidden from the LLM-facing schema.
         assert "ctx" not in schema["properties"]
 
+    def test_read_file_numeric_bounds_mirror_upstream(self):
+        # The node must propagate the numeric bounds the upstream hand-written
+        # schema declares so the LLM-facing schema is faithful. Read the bounds
+        # FROM the upstream constant rather than hardcoding them here.
+        from calfkit_hermes._vendor.tools.file_tools import READ_FILE_SCHEMA
+
+        upstream = READ_FILE_SCHEMA["parameters"]["properties"]
+        schema = params_schema(read_file)
+
+        # offset carries a lower bound (1-indexed line numbers).
+        assert "minimum" in upstream["offset"]
+        assert schema["properties"]["offset"]["minimum"] == upstream["offset"]["minimum"]
+        # limit carries an upper bound (max readable lines).
+        assert "maximum" in upstream["limit"]
+        assert schema["properties"]["limit"]["maximum"] == upstream["limit"]["maximum"]
+
+    def test_only_declared_bounds_are_mirrored(self):
+        # Upstream declares no upper bound on offset and no lower bound on limit;
+        # the node must not invent constraints upstream never declared.
+        from calfkit_hermes._vendor.tools.file_tools import READ_FILE_SCHEMA
+
+        upstream = READ_FILE_SCHEMA["parameters"]["properties"]
+        schema = params_schema(read_file)["properties"]
+
+        assert "maximum" not in upstream["offset"]
+        assert "maximum" not in schema["offset"]
+        assert "minimum" not in upstream["limit"]
+        assert "minimum" not in schema["limit"]
+
+    def test_search_files_declares_no_numeric_bounds_upstream(self):
+        # Guard the F1 scope: search_files's numeric params carry no bounds in
+        # the upstream schema, so the node must not add any.
+        from calfkit_hermes._vendor.tools.file_tools import SEARCH_FILES_SCHEMA
+
+        upstream = SEARCH_FILES_SCHEMA["parameters"]["properties"]
+        schema = params_schema(search_files)["properties"]
+        for name in ("limit", "offset", "context"):
+            assert "minimum" not in upstream[name]
+            assert "maximum" not in upstream[name]
+            assert "minimum" not in schema[name]
+            assert "maximum" not in schema[name]
+
     def test_write_file_schema(self):
         schema = params_schema(write_file)
         assert set(schema["properties"]) == {"path", "content", "cross_profile"}
@@ -177,13 +219,14 @@ class TestWiring:
         ctx = make_ctx(agent_name="p")
         fn(patch)(ctx, mode="replace", path="/tmp/z", old_string="a", new_string="b")
         assert spy["name"] == "patch"
+        # The dispatch seam drops None-valued keys (absent-means-default), so the
+        # omitted ``patch`` arg never reaches the registry.
         assert spy["args"] == {
             "mode": "replace",
             "path": "/tmp/z",
             "old_string": "a",
             "new_string": "b",
             "replace_all": False,
-            "patch": None,
             "cross_profile": False,
         }
         assert spy["task_id"] == "p:default"
@@ -192,11 +235,12 @@ class TestWiring:
         ctx = make_ctx(agent_name="s")
         fn(search_files)(ctx, pattern="needle", path="/tmp/d", target="files")
         assert spy["name"] == "search_files"
+        # ``file_glob`` is omitted (None) so the dispatch seam strips it before
+        # the registry call (absent-means-default).
         assert spy["args"] == {
             "pattern": "needle",
             "target": "files",
             "path": "/tmp/d",
-            "file_glob": None,
             "limit": 50,
             "offset": 0,
             "output_mode": "content",
@@ -253,6 +297,90 @@ class TestRoundTrip:
         r = fn(read_file)(ctx, path=path)
         assert "x = 2" in r["content"]
         assert "x = 1" not in r["content"]
+
+    def test_patch_replace_all_replaces_every_occurrence(self, tmp_workdir):
+        ctx = make_ctx(agent_name=unique_agent())
+        path = os.path.join(tmp_workdir, "multi.txt")
+        fn(write_file)(ctx, path=path, content="foo\nfoo\nbar\nfoo\n")
+
+        res = fn(patch)(
+            ctx,
+            mode="replace",
+            path=path,
+            old_string="foo",
+            new_string="baz",
+            replace_all=True,
+        )
+        assert isinstance(res, dict)
+        assert res.get("success") is True, res
+        assert not res.get("error"), res
+
+        r = fn(read_file)(ctx, path=path)
+        assert "foo" not in r["content"]
+        assert r["content"].count("baz") == 3
+
+    def test_search_files_output_mode_files_only(self, tmp_workdir):
+        ctx = make_ctx(agent_name=unique_agent())
+        path = os.path.join(tmp_workdir, "hits.txt")
+        fn(write_file)(ctx, path=path, content="TARGET\nTARGET\nother\n")
+
+        res = fn(search_files)(
+            ctx, pattern="TARGET", path=tmp_workdir, output_mode="files_only"
+        )
+        assert isinstance(res, dict)
+        # files_only shape: a list of matching file paths, no per-line content.
+        files_listed = res.get("files")
+        assert isinstance(files_listed, list)
+        assert any("hits.txt" in f for f in files_listed)
+        # Distinct from content mode: no per-match line content is surfaced.
+        assert "matches" not in res
+
+    def test_search_files_output_mode_count(self, tmp_workdir):
+        ctx = make_ctx(agent_name=unique_agent())
+        path = os.path.join(tmp_workdir, "counts.txt")
+        fn(write_file)(ctx, path=path, content="TARGET\nTARGET\nother\n")
+
+        res = fn(search_files)(
+            ctx, pattern="TARGET", path=tmp_workdir, output_mode="count"
+        )
+        assert isinstance(res, dict)
+        # count shape: a per-file {path: count} mapping, distinct from the
+        # files_only list and the content matches list.
+        counts = res.get("counts")
+        assert isinstance(counts, dict)
+        assert sum(counts.values()) == 2
+        assert "matches" not in res and "files" not in res
+
+    def test_search_files_target_files_glob(self, tmp_workdir):
+        ctx = make_ctx(agent_name=unique_agent())
+        py_path = os.path.join(tmp_workdir, "module.py")
+        txt_path = os.path.join(tmp_workdir, "notes.txt")
+        fn(write_file)(ctx, path=py_path, content="x = 1\n")
+        fn(write_file)(ctx, path=txt_path, content="hello\n")
+
+        res = fn(search_files)(ctx, pattern="*.py", target="files", path=tmp_workdir)
+        assert isinstance(res, dict)
+        found = res.get("files", [])
+        assert any("module.py" in f for f in found)
+        assert not any("notes.txt" in f for f in found)
+
+    def test_read_file_offset_limit_windowing(self, tmp_workdir):
+        ctx = make_ctx(agent_name=unique_agent())
+        path = os.path.join(tmp_workdir, "lines.txt")
+        fn(write_file)(
+            ctx, path=path, content="L1\nL2\nL3\nL4\nL5\nL6\n"
+        )
+
+        # offset=3, limit=2 -> exactly lines 3 and 4, line-numbered. (The file's
+        # trailing newline yields a phantom empty "5|" gutter entry upstream; the
+        # window's *content* is exactly L3 and L4 and nothing past line 4.)
+        r = fn(read_file)(ctx, path=path, offset=3, limit=2)
+        assert isinstance(r, dict)
+        content_lines = [ln for ln in r["content"].splitlines() if ln.split("|", 1)[1]]
+        assert content_lines == ["3|L3", "4|L4"]
+        # The window never reaches lines outside [3, 4].
+        assert "L2" not in r["content"]
+        assert "L5" not in r["content"]
 
     def test_patch_v4a_mode_applies(self, tmp_workdir):
         """A minimal valid V4A patch (mode='patch') routed through the node."""

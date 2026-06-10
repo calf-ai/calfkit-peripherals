@@ -5,6 +5,7 @@ Design: docs/design/node-port.md §3; ADR-0004.
 
 import json
 
+import pytest
 from calfkit import ToolContext
 
 from calfkit_hermes.node._runtime import dispatch, ensure_tools_discovered, session_key
@@ -43,6 +44,18 @@ class TestSessionKey:
     def test_empty_session_id_falls_back_to_default(self):
         ctx = make_ctx(deps={"session_id": ""})
         assert session_key(ctx) == "agent-a:default"
+
+    def test_missing_agent_name_raises_fail_closed(self):
+        # FIX 3: an unstamped caller (agent_name falsy) must NOT be silently
+        # merged into a shared "None:default" bucket — fail closed instead.
+        ctx = make_ctx(agent_name=None)
+        with pytest.raises(ValueError):
+            session_key(ctx)
+
+    def test_empty_agent_name_raises_fail_closed(self):
+        ctx = make_ctx(agent_name="")
+        with pytest.raises(ValueError):
+            session_key(ctx)
 
 
 class TestEnsureToolsDiscovered:
@@ -107,6 +120,49 @@ class TestDispatch:
 
         monkeypatch.setattr(registry_mod.registry, "dispatch", lambda *a, **k: "[1, 2]")
         assert dispatch("terminal", {}, session_key="k") == [1, 2]
+
+    def test_none_valued_args_dropped_before_forwarding(self, monkeypatch):
+        # FIX 1a: wrappers forward explicit None for omitted params. Upstream
+        # handlers read every field via args.get(default), so a PRESENT key
+        # with value None overrides the default (e.g. read_log(offset=None) ->
+        # TypeError). Dropping None keys restores absent == default semantics.
+        from calfkit_hermes._vendor.tools import registry as registry_mod
+
+        seen = {}
+
+        def fake_dispatch(name, args, **kwargs):
+            seen["args"] = args
+            return json.dumps({})
+
+        monkeypatch.setattr(registry_mod.registry, "dispatch", fake_dispatch)
+        dispatch(
+            "process",
+            {"action": "log", "session_id": "proc_x", "offset": None, "limit": None},
+            session_key="k",
+        )
+        assert seen["args"] == {"action": "log", "session_id": "proc_x"}
+
+    def test_present_non_none_args_are_kept(self, monkeypatch):
+        from calfkit_hermes._vendor.tools import registry as registry_mod
+
+        seen = {}
+
+        def fake_dispatch(name, args, **kwargs):
+            seen["args"] = args
+            return json.dumps({})
+
+        monkeypatch.setattr(registry_mod.registry, "dispatch", fake_dispatch)
+        dispatch(
+            "process",
+            {"action": "log", "session_id": "proc_x", "offset": 0, "limit": 10},
+            session_key="k",
+        )
+        assert seen["args"] == {
+            "action": "log",
+            "session_id": "proc_x",
+            "offset": 0,
+            "limit": 10,
+        }
 
 
 class TestSessionIsolationRegistration:

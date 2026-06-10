@@ -151,6 +151,58 @@ class TestEnabledTools:
 
 
 # --------------------------------------------------------------------------- #
+# 3b. Fail-closed guard — a restrictive override must never EXPAND the sandbox. #
+#                                                                               #
+# Upstream falls back to the FULL SANDBOX_ALLOWED_TOOLS set when the enabled    #
+# set's intersection with it is empty (code_execution_tool: "if not             #
+# sandbox_tools: sandbox_tools = SANDBOX_ALLOWED_TOOLS"). A typo'd or           #
+# non-sandboxable-only override would silently grant every tool. The node       #
+# fails closed instead: error dict, no dispatch.                                #
+# --------------------------------------------------------------------------- #
+class TestFailClosedOverride:
+    def _spy(self, monkeypatch):
+        from calfkit_hermes._vendor.tools import registry as registry_mod
+
+        calls = []
+        monkeypatch.setattr(
+            registry_mod.registry,
+            "dispatch",
+            lambda name, args, **kw: calls.append(name) or "{}",
+        )
+        return calls
+
+    def test_all_unknown_override_fails_closed(self, monkeypatch):
+        calls = self._spy(monkeypatch)
+        monkeypatch.setenv("EXECUTE_CODE_ENABLED_TOOLS", "terminl,bogus")
+
+        result = run_execute_code(make_ctx(agent_name="agent-fc1"), code="pass")
+
+        assert "error" in result
+        assert "EXECUTE_CODE_ENABLED_TOOLS" in result["error"]
+        assert calls == []  # never reached the vendored tool
+
+    def test_non_sandboxable_only_override_fails_closed(self, monkeypatch):
+        # process/todo are valid hermes tools but generate no sandbox stub;
+        # upstream would expand the empty intersection to ALL tools.
+        calls = self._spy(monkeypatch)
+        monkeypatch.setenv("EXECUTE_CODE_ENABLED_TOOLS", "process,todo")
+
+        result = run_execute_code(make_ctx(agent_name="agent-fc2"), code="pass")
+
+        assert "error" in result
+        assert calls == []
+
+    def test_default_set_still_dispatches(self, monkeypatch):
+        calls = self._spy(monkeypatch)
+        monkeypatch.delenv("EXECUTE_CODE_ENABLED_TOOLS", raising=False)
+
+        result = run_execute_code(make_ctx(agent_name="agent-fc3"), code="pass")
+
+        assert result == {}
+        assert calls == ["execute_code"]
+
+
+# --------------------------------------------------------------------------- #
 # 4. Functional — a real PTC run that proves session isolation propagates.      #
 #                                                                               #
 # The node's terminal env and the in-script terminal call share one session_key #

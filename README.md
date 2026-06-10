@@ -12,6 +12,9 @@ its tools over the calfkit Kafka contract.
 - `components/<source>/` — one self-contained node component per upstream source.
 - `components/_template/` — copy this to start a new port.
 - `docs/project-structure.md` — **start here** to add a port.
+- `docs/reference/tool-contracts.md` — roll-up of every tool node's interface
+  contract (params, deps/resource wiring, env config, reply shapes); each
+  component's `NODE.md` stays authoritative.
 - `docs/design/` — per-tool design docs (e.g. the hermes-agent shell+file port).
 - `docs/tools-research/` — the upstream survey that informed which tools to vendor.
 - `THIRD_PARTY_NOTICES.md` — aggregated attribution index (per-component `LICENSE` +
