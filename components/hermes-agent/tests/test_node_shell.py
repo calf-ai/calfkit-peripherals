@@ -84,6 +84,37 @@ class TestSchemaSanity:
         assert "ctx" not in schema_props(terminal)
         assert "ctx" not in schema_props(process)
 
+    # ----- FIX 4: numeric bounds mirror upstream's schema constraints ----- #
+    @staticmethod
+    def _minimum_of(prop_schema):
+        """The lower bound, whether declared flat or inside an anyOf branch."""
+        if "minimum" in prop_schema:
+            return prop_schema["minimum"]
+        for branch in prop_schema.get("anyOf", []):
+            if "minimum" in branch:
+                return branch["minimum"]
+        return None
+
+    def test_terminal_timeout_minimum_matches_upstream(self):
+        upstream = TERMINAL_SCHEMA["parameters"]["properties"]["timeout"]["minimum"]
+        assert upstream == 1
+        assert self._minimum_of(schema_props(terminal)["timeout"]) == upstream
+
+    def test_process_timeout_minimum_matches_upstream(self):
+        upstream = PROCESS_SCHEMA["parameters"]["properties"]["timeout"]["minimum"]
+        assert upstream == 1
+        assert self._minimum_of(schema_props(process)["timeout"]) == upstream
+
+    def test_process_limit_minimum_matches_upstream(self):
+        upstream = PROCESS_SCHEMA["parameters"]["properties"]["limit"]["minimum"]
+        assert upstream == 1
+        assert self._minimum_of(schema_props(process)["limit"]) == upstream
+
+    def test_process_offset_has_no_minimum_like_upstream(self):
+        # Upstream declares no minimum on offset; the node must not invent one.
+        assert "minimum" not in PROCESS_SCHEMA["parameters"]["properties"]["offset"]
+        assert self._minimum_of(schema_props(process)["offset"]) is None
+
 
 # --------------------------------------------------------------------------- #
 # 2. Wiring spy — name/args/task_id forwarded through the dispatch seam.        #
@@ -105,9 +136,13 @@ class TestWiring:
 
         assert seen["name"] == "terminal"
         assert seen["task_id"] == "agent-x:s1"
-        # All upstream params are passed explicitly (wrapper stays dumb).
-        assert set(seen["args"]) == set(TERMINAL_SCHEMA["parameters"]["properties"])
+        # Keys reaching the seam are a subset of upstream's params (the wrapper
+        # forwards all of them, but _runtime.dispatch drops the None-valued
+        # ones the agent omitted — FIX 1). command was supplied, so it survives.
+        assert set(seen["args"]) <= set(TERMINAL_SCHEMA["parameters"]["properties"])
         assert seen["args"]["command"] == "pwd"
+        # Omitted optionals are dropped, not forwarded as None.
+        assert "timeout" not in seen["args"]
         assert result == {"ok": True}
 
     def test_process_forwards_name_args_and_task_id(self, monkeypatch):
@@ -126,8 +161,10 @@ class TestWiring:
 
         assert seen["name"] == "process"
         assert seen["task_id"] == "agent-y:default"
-        assert set(seen["args"]) == set(PROCESS_SCHEMA["parameters"]["properties"])
+        # None-valued omitted params are dropped (FIX 1); only action survives.
+        assert set(seen["args"]) <= set(PROCESS_SCHEMA["parameters"]["properties"])
         assert seen["args"]["action"] == "list"
+        assert "session_id" not in seen["args"]
         assert result == {"processes": []}
 
 
@@ -180,6 +217,13 @@ class TestResultShape:
         assert isinstance(result, dict)
         assert "output" in result
 
+    def test_terminal_runs_in_workdir(self, tmp_path):
+        # FIX 5: workdir is honoured — the command runs in the given directory.
+        a = make_ctx(agent_name=agent("workdir"))
+        result = run_terminal(a, command="pwd", workdir=str(tmp_path))
+        # macOS /var symlinks to /private/var; match on the basename to stay robust.
+        assert tmp_path.name in result["output"]
+
 
 # --------------------------------------------------------------------------- #
 # 5. process — background submit/poll/wait/kill lifecycle.                       #
@@ -219,3 +263,122 @@ class TestProcessLifecycle:
             assert sid in sids
         finally:
             run_process(a, action="kill", session_id=sid)
+
+
+# --------------------------------------------------------------------------- #
+# 6. process log pagination — FIX 1b: default pagination must not crash.        #
+# --------------------------------------------------------------------------- #
+class TestProcessLog:
+    def test_log_with_default_pagination_returns_output(self):
+        # FIX 1: process(action="log") without offset/limit used to forward
+        # offset=None/limit=None -> read_log(None, None) -> TypeError. With the
+        # None-dropping fix the upstream 0/200 defaults apply and we get output.
+        a = make_ctx(agent_name=agent("proc-log"))
+        started = run_terminal(a, command="echo hello-log; sleep 0.3", background=True)
+        sid = started["session_id"]
+        try:
+            run_process(a, action="wait", session_id=sid, timeout=5)
+            logged = run_process(a, action="log", session_id=sid)
+            assert isinstance(logged, dict)
+            assert "error" not in logged
+            assert "hello-log" in logged["output"]
+        finally:
+            run_process(a, action="kill", session_id=sid)
+
+    def test_log_with_explicit_pagination_works(self):
+        a = make_ctx(agent_name=agent("proc-log-pag"))
+        started = run_terminal(a, command="echo hello-log; sleep 0.3", background=True)
+        sid = started["session_id"]
+        try:
+            run_process(a, action="wait", session_id=sid, timeout=5)
+            logged = run_process(a, action="log", session_id=sid, offset=0, limit=50)
+            assert isinstance(logged, dict)
+            assert "error" not in logged
+            assert "hello-log" in logged["output"]
+        finally:
+            run_process(a, action="kill", session_id=sid)
+
+
+# --------------------------------------------------------------------------- #
+# 7. Cross-tenant ownership guard — FIX 2.                                       #
+#                                                                               #
+# Upstream scopes only 'list' by task_id; handle actions (poll/log/wait/kill/   #
+# write/close) look the process up by the global proc_* handle, so tenant B     #
+# could control A's process if it learned the handle. The node verifies         #
+# ownership at the public seam (a scoped 'list') before dispatching, and        #
+# denies foreign handles with upstream's own not-found error shape.             #
+# --------------------------------------------------------------------------- #
+NOT_FOUND_STATUS = "not_found"
+
+
+class TestProcessOwnershipGuard:
+    def test_foreign_agent_cannot_poll_kill_or_log(self):
+        owner = make_ctx(agent_name=agent("own-a"))
+        intruder = make_ctx(agent_name=agent("own-b"))
+
+        started = run_terminal(owner, command="sleep 1.0", background=True)
+        sid = started["session_id"]
+        try:
+            for action in ("poll", "log", "kill", "wait"):
+                denied = run_process(intruder, action=action, session_id=sid)
+                assert denied["status"] == NOT_FOUND_STATUS
+                # Deny-as-not-found: mirror upstream's unknown-handle text.
+                assert sid in denied["error"]
+                assert "No process with ID" in denied["error"]
+
+            # A's process is unaffected — the owner can still poll it.
+            owner_poll = run_process(owner, action="poll", session_id=sid)
+            assert owner_poll["status"] in {"running", "exited", "finished", "done"}
+        finally:
+            run_process(owner, action="kill", session_id=sid)
+
+    def test_owner_can_poll_log_wait_a_finished_process(self):
+        # Regression for the list-includes-finished question: list_sessions()
+        # unions running + finished, so the ownership guard still admits the
+        # owner after the process has exited.
+        owner = make_ctx(agent_name=agent("own-fin"))
+        started = run_terminal(owner, command="echo bye", background=True)
+        sid = started["session_id"]
+
+        waited = run_process(owner, action="wait", session_id=sid, timeout=5)
+        assert waited["status"] == "exited"
+
+        polled = run_process(owner, action="poll", session_id=sid)
+        assert polled["status"] in {"exited", "finished", "done"}
+
+        logged = run_process(owner, action="log", session_id=sid)
+        assert "error" not in logged
+        assert "bye" in logged["output"]
+
+    def test_list_and_submit_are_not_blocked_by_the_guard(self, monkeypatch):
+        # 'list' takes no handle and must never trigger ownership verification;
+        # 'submit' is a handle action but the guard must let owned handles pass.
+        from calfkit_hermes._vendor.tools import registry as registry_mod
+
+        real_dispatch = registry_mod.registry.dispatch
+        calls = []
+
+        def tracking_dispatch(name, args, **kwargs):
+            calls.append(args.get("action"))
+            return real_dispatch(name, args, **kwargs)
+
+        a = make_ctx(agent_name=agent("guard-list"))
+        # list: should not provoke an internal verification 'list' beyond its own.
+        monkeypatch.setattr(registry_mod.registry, "dispatch", tracking_dispatch)
+        run_process(a, action="list")
+        assert calls == ["list"]
+
+    def test_foreign_poll_does_not_mutate_owner_state(self):
+        owner = make_ctx(agent_name=agent("own-safe"))
+        intruder = make_ctx(agent_name=agent("own-safe-b"))
+        started = run_terminal(owner, command="sleep 1.0", background=True)
+        sid = started["session_id"]
+        try:
+            run_process(intruder, action="poll", session_id=sid)
+            # Still listed under the owner, still controllable by the owner.
+            owner_sids = {
+                p.get("session_id") for p in run_process(owner, action="list")["processes"]
+            }
+            assert sid in owner_sids
+        finally:
+            run_process(owner, action="kill", session_id=sid)

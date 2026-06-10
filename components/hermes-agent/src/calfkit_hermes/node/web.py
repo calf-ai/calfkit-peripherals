@@ -18,6 +18,13 @@ vendored config resolver (``get_active_*``) is never called (ADR-0002).
   provider. Safe URLs go to ``provider.extract`` (sync -> ``asyncio.to_thread``).
   Results are re-wrapped into ``{"success": True, "data": [...]}`` (the wrapping
   the dropped dispatcher used to do; web-search-tool-port.md §7).
+
+Provider exceptions PROPAGATE: neither node wraps ``provider.search`` /
+``provider.extract`` in a ``try``/``except`` — an unexpected raise bubbles up so
+calfkit converts it into a ``FailedToolCall``. (The clean ``error`` dicts these
+nodes return cover only *known* conditions — unknown/unavailable backend,
+unsupported capability, blocked URL. In practice the shipped providers
+self-handle network errors and return an error dict of their own.)
 """
 
 from __future__ import annotations
@@ -79,6 +86,10 @@ def web_search(query: str, limit: int = 5) -> dict:
         query: The search query.
         limit: Maximum number of results to return (default 5).
     """
+    # Deliberately sync: calfkit runs sync tools in a thread pool, which already
+    # satisfies the design's "offload the blocking provider call off the event
+    # loop" requirement — do NOT "fix" this to a bare async def (that would run
+    # the blocking provider.search ON the event loop, without offload).
     name = os.getenv("WEB_SEARCH_BACKEND", DEFAULT_SEARCH_BACKEND)
     provider = get_provider(name)
     if provider is None:
@@ -94,6 +105,11 @@ def web_search(query: str, limit: int = 5) -> dict:
 @agent_tool
 async def web_extract(urls: list[str]) -> dict:
     """Extract readable content from one or more web pages.
+
+    Result order is NOT guaranteed to match the input ``urls`` order: the
+    returned ``data`` list is the provider-extracted (safe-URL) entries followed
+    by the per-URL SSRF-blocked entries. Correlate results by their ``url``
+    field, not by position.
 
     Args:
         urls: The page URLs to extract content from.

@@ -11,6 +11,16 @@ durable Faust-backed Store is deferred). Per call the node seeds a fresh
 through the upstream registry seam with ``store=``, and persists
 ``store.read()`` back **only on writes** (``todos is not None``) — reads never
 ``put()`` (the id-collapse / changelog-amplification hazard of ADR-0003).
+
+Strict item schema (deliberate): ``TodoItem`` marks ``id``/``content``/``status``
+all required, so calfkit's arg validator REJECTS a partial/invalid item before
+it reaches the Operator. This is intentionally stricter than upstream's
+``TodoStore._validate``, which would *salvage* such items (id -> ``"?"``,
+status -> ``"pending"``, content -> ``"(no description)"``). We mirror upstream's
+*advertised* schema (``TODO_SCHEMA`` marks all three required) and let calfkit's
+``FailedToolCall`` give the model a structured retry rather than silently
+accepting a guessed-at item it never intended (see ``test_node_todo.py``
+``TestStrictSchemaRejectsPartialItems``).
 """
 
 from __future__ import annotations

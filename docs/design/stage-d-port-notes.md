@@ -47,6 +47,55 @@ implementation (2026-06-10). Posted as a PR comment at the end per request.
    unparseable). Content is byte-identical to upstream's intent, framing is
    calfkit-native.
 
+## Review rounds (per-tool, converged) — what they found and what was done
+
+10. **Round 1 (5 parallel scoped reviews):** web_fetch / files / todo / web
+    CONVERGED on round 1; shell NEEDS-ROUND-2. The shell review found one
+    CRITICAL the TDD suite had missed: wrappers forwarded explicit `None` for
+    omitted params, and upstream's `args.get("offset", 0)`-style defaults were
+    clobbered by present-`None` keys — `process(action="log")` with default
+    pagination crashed with a TypeError. Fixed at the seam: `dispatch()` now
+    drops `None`-valued args (absent ≡ None for every upstream handler), with
+    runtime + functional `log` tests.
+
+11. **Cross-tenant process-handle gap (review MAJOR, fixed):** upstream scopes
+    only `process list` by task_id; poll/log/wait/kill/write/submit/close look
+    up by the globally-unique `proc_*` handle, so a tenant who learned another
+    tenant's handle could control its process. The node now runs an ownership
+    guard (a `list` scoped to the caller's `session_key` — verified upstream
+    includes finished processes) before any handle action and denies foreign
+    handles with upstream's own not-found shape. The 64-entry global
+    `MAX_PROCESSES` LRU remains an accepted, documented limitation.
+
+12. **Fail-closed hardening from reviews:** `session_key()` now raises on a
+    missing `agent_name` instead of silently merging unstamped callers into
+    one bucket; `execute_code` refuses (error reply) when
+    `EXECUTE_CODE_ENABLED_TOOLS` resolves to zero sandbox-callable tools —
+    upstream's behavior for an empty intersection is to fall back to the FULL
+    tool set, so a typo'd restrictive override would have silently expanded
+    the sandbox.
+
+13. **Todo strictness decision (recorded):** the node's `TodoItem` schema makes
+    calfkit reject partial items (missing id/content/status) that upstream's
+    `_validate` would have salvaged (`id="?"`, `status="pending"`, …). Decided
+    to KEEP the strict schema: it mirrors upstream's *advertised* schema
+    (TODO_SCHEMA marks all three required), and calfkit's `FailedToolCall`
+    gives the model a structured retry. Pinned with tests + docstring note.
+
+14. **Schema-bounds fidelity restored:** upstream's hand-written numeric bounds
+    (`terminal.timeout ge 1`, `process.timeout/limit ge 1`, `read_file.offset
+    ge 1` / `limit le 2000`) are now mirrored via `Annotated[..., Field(...)]`
+    — verified calfkit propagates them into the LLM-facing JSON schema. Only
+    bounds upstream actually declares were added.
+
+15. **execute_code review extras:** in-script tool-call isolation re-verified
+    end-to-end (task_id is server-side in the RPC loop — scripts cannot inject
+    a foreign session); the in-script allow-list is enforced server-side (not
+    just stub generation); `web_search`/`web_extract` in the env override are
+    stub-generatable but dispatch-dead (not registry-bridged) — documented in
+    NODE.md. Script-body cwd is the node's, not the session's (docstring
+    corrected); in-script *tool calls* are session-scoped.
+
 ## Known limitations (accepted, by your in-memory decision)
 
 7. **Stateful nodes are single-process.** calfkit partitions by correlation id

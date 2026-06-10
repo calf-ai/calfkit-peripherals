@@ -13,11 +13,22 @@ pool, and hermes' own locks make the seam thread-safe.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from calfkit import ToolContext, agent_tool
+from pydantic import Field
 
 from calfkit_hermes.node._runtime import dispatch, session_key
+
+# Handle actions look the process up by the global ``proc_*`` handle, not by
+# task_id — so they are the ones that need a node-side ownership guard (FIX 2).
+# ``list`` is already tenancy-scoped upstream and takes no handle. ``submit`` is
+# included alongside ``write``: both push raw bytes to the process stdin, so
+# leaving submit unguarded would reopen the very cross-tenant control hole this
+# guard closes (the reviewer's enumerated set omitted it; see NODE.md).
+_HANDLE_ACTIONS = frozenset(
+    {"poll", "log", "wait", "kill", "write", "submit", "close"}
+)
 
 
 @agent_tool
@@ -25,7 +36,7 @@ def terminal(
     ctx: ToolContext,
     command: str,
     background: bool = False,
-    timeout: int | None = None,
+    timeout: Annotated[int | None, Field(ge=1)] = None,
     workdir: str | None = None,
     pty: bool = False,
     notify_on_complete: bool = False,
@@ -92,9 +103,9 @@ def process(
     action: Literal["list", "poll", "log", "wait", "kill", "write", "submit", "close"],
     session_id: str | None = None,
     data: str | None = None,
-    timeout: int | None = None,
+    timeout: Annotated[int | None, Field(ge=1)] = None,
     offset: int | None = None,
-    limit: int | None = None,
+    limit: Annotated[int | None, Field(ge=1)] = None,
 ) -> dict | str:
     """Manage background processes started with terminal(background=true).
 
@@ -114,6 +125,29 @@ def process(
         offset: Line offset for 'log' action (default: last 200 lines).
         limit: Max lines to return for 'log' action.
     """
+    key = session_key(ctx)
+
+    # Cross-tenant ownership guard (FIX 2). Upstream scopes only 'list' by
+    # task_id; every handle action looks the process up by the global proc_*
+    # handle, so without this a caller that learns another tenant's handle
+    # could poll/log/wait/kill/write/submit/close their process. We verify
+    # ownership at the public seam — a 'list' scoped to the caller's
+    # session_key (which upstream filters by task_id and which includes
+    # finished processes, so owners can still inspect an exited process). On
+    # failure we mirror upstream's unknown-handle response exactly
+    # (deny-as-not-found — never leak that the handle exists for someone else).
+    if action in _HANDLE_ACTIONS and session_id is not None:
+        listing = dispatch("process", {"action": "list"}, session_key=key)
+        owned = {
+            p.get("session_id")
+            for p in (listing.get("processes", []) if isinstance(listing, dict) else [])
+        }
+        if str(session_id) not in {str(s) for s in owned if s is not None}:
+            return {
+                "status": "not_found",
+                "error": f"No process with ID {session_id}",
+            }
+
     return dispatch(
         "process",
         {
@@ -124,5 +158,5 @@ def process(
             "offset": offset,
             "limit": limit,
         },
-        session_key=session_key(ctx),
+        session_key=key,
     )

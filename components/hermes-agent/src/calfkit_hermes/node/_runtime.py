@@ -28,6 +28,18 @@ def session_key(ctx: ToolContext) -> str:
     emitter header, ``session_id`` is wired by the invoking client via deps
     (absent -> agent-lifetime scope). See ADR-0004 and CONTEXT.md *Session*.
     """
+    if not ctx.agent_name:
+        # Fail closed: an unstamped caller would otherwise format into
+        # "None:default" and silently share one tenancy bucket with every
+        # other unstamped caller. agent_name is stamped from the unspoofable
+        # x-calf-emitter transport header (ADR-0004); its absence is a wiring
+        # bug, not a default to paper over.
+        raise ValueError(
+            "session_key requires a non-empty ctx.agent_name (stamped from the "
+            "x-calf-emitter header); got "
+            f"{ctx.agent_name!r}. Refusing to merge unstamped callers into a "
+            "shared tenancy bucket."
+        )
     deps = ctx.deps or {}
     raw = deps.get("session_id")
     session_id = str(raw) if raw is not None and str(raw) else DEFAULT_SESSION_ID
@@ -80,6 +92,16 @@ def dispatch(name: str, args: dict[str, Any], *, session_key: str, **kwargs: Any
     from calfkit_hermes._vendor.tools.registry import registry
 
     _ensure_session_isolated(session_key)
+    # Drop None-valued keys: the node wrappers forward every upstream param
+    # explicitly (None for those the agent omitted), but upstream handlers read
+    # each field via ``args.get(name, default)`` — a PRESENT key carrying None
+    # overrides the default with None (e.g. process(action="log") forwards
+    # offset=None/limit=None -> read_log(None, None) -> TypeError). Dropping
+    # None keys restores absent-means-default semantics. Verified safe for every
+    # hermes tool: all upstream handlers source params through ``args.get`` (a
+    # missing key is already treated as None / its declared default), so an
+    # explicit None is indistinguishable from omission downstream.
+    args = {k: v for k, v in args.items() if v is not None}
     result = registry.dispatch(name, args, task_id=session_key, **kwargs)
     try:
         return json.loads(result)

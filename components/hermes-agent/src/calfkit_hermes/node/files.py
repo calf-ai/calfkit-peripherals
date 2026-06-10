@@ -12,15 +12,21 @@ per-``task_id`` file trackers provide isolation. See docs/design/node-port.md §
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from calfkit import ToolContext, agent_tool
+from pydantic import Field
 
 from ._runtime import dispatch, session_key
 
 
 @agent_tool
-def read_file(ctx: ToolContext, path: str, offset: int = 1, limit: int = 500) -> dict:
+def read_file(
+    ctx: ToolContext,
+    path: str,
+    offset: Annotated[int, Field(ge=1)] = 1,
+    limit: Annotated[int, Field(le=2000)] = 500,
+) -> dict:
     """Read a text file with line numbers and pagination.
 
     Use this instead of cat/head/tail in terminal. Output format:

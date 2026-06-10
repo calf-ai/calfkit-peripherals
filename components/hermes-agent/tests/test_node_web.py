@@ -20,6 +20,7 @@ from calfkit_hermes._vendor.agent.web_search_registry import (
     _reset_for_tests,
     register_provider,
 )
+from calfkit_hermes._vendor.tools.url_safety import _reset_allow_private_cache
 from calfkit_hermes.node import web
 from calfkit_hermes.node.web import web_extract as web_extract_node
 from calfkit_hermes.node.web import web_search as web_search_node
@@ -35,6 +36,23 @@ def clean_registry():
     _reset_for_tests()
     yield
     _reset_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def fail_closed_ssrf(monkeypatch):
+    """Defensive hygiene for the SSRF-guard tests: make sure the private-URL
+    escape hatch is firmly OFF so a leaked env var or a cached toggle from an
+    earlier test can't silently disable the block assertions.
+
+    ``async_is_safe_url`` honours ``HERMES_ALLOW_PRIVATE_URLS`` (and a
+    config-backed toggle it caches process-wide). We delete the env var and
+    reset the vendored cache before AND after each test so the guard stays
+    fail-closed regardless of ambient state.
+    """
+    monkeypatch.delenv("HERMES_ALLOW_PRIVATE_URLS", raising=False)
+    _reset_allow_private_cache()
+    yield
+    _reset_allow_private_cache()
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +153,30 @@ class TestWebSearch:
         result = web_search("q")
         assert result["data"]["web"][0]["url"] == "https://x"
 
+    def test_provider_exception_propagates(self, monkeypatch):
+        """Contract: the node does NOT swallow provider exceptions — it lets
+        them propagate so calfkit converts them into a ``FailedToolCall``.
+        (In practice the shipped providers self-handle and return an error dict;
+        this pins that an unexpected raise is surfaced, not silently eaten.)"""
+        monkeypatch.setenv("WEB_SEARCH_BACKEND", "ddgs")
+
+        class RaisingSearchProvider(FakeSearchProvider):
+            def search(self, query, limit=5):
+                raise RuntimeError("backend exploded")
+
+        register_provider(RaisingSearchProvider(name="ddgs"))
+        with pytest.raises(RuntimeError, match="backend exploded"):
+            web_search("q")
+
+    def test_limit_is_forwarded_verbatim_to_provider(self, monkeypatch):
+        """``limit`` reaches ``provider.search`` unchanged (no clamping/default
+        override by the node)."""
+        monkeypatch.setenv("WEB_SEARCH_BACKEND", "ddgs")
+        provider = FakeSearchProvider(name="ddgs")
+        register_provider(provider)
+        web_search("q", limit=42)
+        assert provider.search_calls == [("q", 42)]
+
 
 # ===========================================================================
 # web_extract
@@ -160,6 +202,17 @@ class TestWebExtract:
         register_provider(provider)
         run_extract(["https://example.com"])
         assert provider.extract_calls == [["https://example.com"]]
+
+    def test_empty_urls_returns_success_and_skips_provider(self, monkeypatch):
+        """An empty ``urls`` list short-circuits to the documented empty
+        success envelope and NEVER calls the provider (no SSRF check, no
+        ``extract``)."""
+        monkeypatch.setenv("WEB_EXTRACT_BACKEND", "tavily")
+        provider = FakeExtractProvider(name="tavily")
+        register_provider(provider)
+        result = run_extract([])
+        assert result == {"success": True, "data": []}
+        assert provider.extract_calls == []
 
     def test_unknown_provider_returns_error_dict(self, monkeypatch):
         monkeypatch.setenv("WEB_EXTRACT_BACKEND", "nope")
@@ -226,7 +279,11 @@ class TestWebExtract:
 
 
 class TestDormantResolverNeverCalled:
-    def test_neither_node_calls_active_resolvers(self, monkeypatch):
+    def test_neither_node_calls_the_top_level_resolvers(self, monkeypatch):
+        """Pin the *advertised* contract: the ``get_active_*`` entry points are
+        never referenced by node code. (Weak on its own — node code never names
+        them — so :meth:`test_resolver_substrate_is_never_reached` is the load
+        bearing assertion.)"""
         import calfkit_hermes._vendor.agent.web_search_registry as reg
 
         def boom(*a, **k):
@@ -242,6 +299,29 @@ class TestDormantResolverNeverCalled:
         monkeypatch.setenv("WEB_EXTRACT_BACKEND", "tavily")
         register_provider(FakeExtractProvider(name="tavily"))
         run_extract(["https://example.com"])  # must not raise
+
+    def test_resolver_substrate_is_never_reached(self, monkeypatch):
+        """Strong form (ADR-0002): patch the resolver SUBSTRATE — the config
+        reader ``_read_config_key`` and the resolution core ``_resolve`` — to
+        raise, then exercise both nodes end to end. If ANY indirect path (an
+        alias, a re-export, a forgotten internal call) reached the config
+        resolver, one of these would explode. They don't: the nodes select the
+        backend purely from the env var via ``get_provider``."""
+        import calfkit_hermes._vendor.agent.web_search_registry as reg
+
+        def boom(*a, **k):
+            raise AssertionError("dormant config resolver substrate was reached")
+
+        monkeypatch.setattr(reg, "_read_config_key", boom)
+        monkeypatch.setattr(reg, "_resolve", boom)
+
+        monkeypatch.setenv("WEB_SEARCH_BACKEND", "ddgs")
+        register_provider(FakeSearchProvider(name="ddgs"))
+        assert web_search("q")["success"] is True
+
+        monkeypatch.setenv("WEB_EXTRACT_BACKEND", "tavily")
+        register_provider(FakeExtractProvider(name="tavily"))
+        assert run_extract(["https://example.com"])["success"] is True
 
 
 # ===========================================================================

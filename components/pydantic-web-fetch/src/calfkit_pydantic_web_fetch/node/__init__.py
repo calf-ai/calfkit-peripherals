@@ -34,8 +34,9 @@ async def web_fetch(url: str) -> dict:
 
     Retrieves the page at the given URL through an SSRF-protected fetcher and converts the
     response body to clean markdown. HTML titles are extracted, JSON is pretty-printed, and
-    other text formats are returned as-is. Binary responses (PDFs, images, etc.) are returned
-    base64-encoded with their media type.
+    other text formats are returned as-is. Long pages are truncated to ~50,000 characters and
+    marked with a trailing `[Content truncated]`. Binary responses (PDFs, images, etc.) are
+    returned base64-encoded with their media type.
 
     Args:
         url: The HTTP or HTTPS URL to fetch.

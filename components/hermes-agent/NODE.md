@@ -70,7 +70,7 @@ Every stateful call is scoped by
 | `WEB_SEARCH_BACKEND` | `ddgs` | search provider (`ddgs`, `brave-free`, `searxng`, `tavily`) |
 | `WEB_EXTRACT_BACKEND` | `tavily` | extract provider (Tier-0: tavily only) |
 | `BRAVE_SEARCH_API_KEY` / `SEARXNG_URL` / `TAVILY_API_KEY` | — | per-provider credentials |
-| `EXECUTE_CODE_ENABLED_TOOLS` | file+shell+todo set | comma-separated tools callable from in-script PTC |
+| `EXECUTE_CODE_ENABLED_TOOLS` | file+shell+todo set | comma-separated tools callable from in-script PTC. Only registry-bridged tools (`terminal`, `read_file`, `write_file`, `patch`, `search_files`) work in-script — `web_search`/`web_extract` are separate calfkit nodes, not bridged. An override resolving to zero sandbox-callable tools fails closed (error reply, never the full-set fallback) |
 | `TERMINAL_ENV` | `local` | shell backend (`docker`/`ssh`/`modal`/… via extras) |
 | `TERMINAL_LIFETIME_SECONDS` | `300` | idle shell-environment eviction |
 
@@ -95,10 +95,17 @@ Do **not** set `HERMES_ALLOW_PRIVATE_URLS` in the node's process env — the
 
 ## Known limitations
 
-- `process` actions that take a `proc_*` handle (`poll`/`log`/`wait`/`kill`/
-  `write`/`close`) look the process up by its globally-unique handle; `list`
-  is the only tenancy-scoped view. Handles are unguessable (uuid4-derived)
-  but treat them as capability tokens.
+- `process` handle actions (`poll`/`log`/`wait`/`kill`/`write`/`submit`/
+  `close`) look the process up by its globally-unique `proc_*` handle, which
+  upstream does **not** scope by tenant. The node closes that gap with an
+  ownership guard: before dispatching any handle action it runs a `list`
+  scoped to the caller's `session_key` (upstream filters `list` by `task_id`
+  and includes finished processes, so owners can still inspect an exited one)
+  and verifies the handle is present. A foreign or unknown handle is denied
+  with upstream's own not-found response (`{"status": "not_found", "error":
+  "No process with ID …"}`) — deny-as-not-found, so the guard never leaks that
+  a handle exists for another tenant. Verification stays at the public
+  registry seam; no vendor internals are touched.
 - The background-process registry caps at 64 entries globally (upstream
   `MAX_PROCESSES` LRU) — shared across all sessions of the node process.
 - Session bookkeeping (override-registry entries, todo lists) grows with

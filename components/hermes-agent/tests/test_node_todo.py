@@ -111,6 +111,26 @@ class TestTodoNode:
         call_todo(make_ctx(store=store), todos=[{"id": "1", "content": "a", "status": "pending"}])
         assert puts == ["agent-a:default"]
 
+    def test_empty_list_is_a_write_that_clears_and_persists(self):
+        """``todos=[]`` is a WRITE (``todos is not None``), not a read: it clears
+        the list and DOES persist via ``store.put`` — upstream's ``todo_tool``
+        treats any non-None ``todos`` as a write (``if todos is not None``)."""
+        store = InMemoryTodoStore()
+        # Seed a non-empty list first.
+        call_todo(
+            make_ctx(store=store),
+            todos=[{"id": "1", "content": "a", "status": "pending"}],
+        )
+        puts = []
+        original_put = store.put
+        store.put = lambda key, items: puts.append((key, list(items))) or original_put(key, items)
+        # An empty list clears and must persist (not be treated as a read).
+        result = call_todo(make_ctx(store=store), todos=[])
+        assert result["todos"] == []
+        assert puts == [("agent-a:default", [])]
+        # A fresh seeded read sees the cleared (empty) list, proving it persisted.
+        assert call_todo(make_ctx(store=store))["todos"] == []
+
     def test_merge_is_read_modify_write(self):
         store = InMemoryTodoStore()
         call_todo(
@@ -234,3 +254,61 @@ class TestSchema:
             "completed",
             "cancelled",
         ]
+
+
+# ---------------------------------------------------------------------------
+# Strict-schema contract (deliberately stricter than upstream's salvage)
+# ---------------------------------------------------------------------------
+
+
+class TestStrictSchemaRejectsPartialItems:
+    """The node's ``TodoItem`` TypedDict marks ``id``/``content``/``status`` all
+    required, so calfkit's arg validator REJECTS a partial/invalid item before
+    it ever reaches the Operator.
+
+    This is *deliberately stricter* than upstream's ``TodoStore._validate``,
+    which would SALVAGE such items (id -> ``"?"``, status -> ``"pending"``,
+    content -> ``"(no description)"``). We keep the strict schema because it
+    faithfully mirrors upstream's *advertised* schema — ``TODO_SCHEMA`` marks
+    all three fields required — and a hard rejection gives the model a
+    structured ``FailedToolCall`` to retry against, rather than silently
+    accepting a guessed-at item the model never intended.
+
+    The validator under test is the calfkit-built arg validator at
+    ``todo._tool.function_schema.validator`` (a pydantic_core
+    ``SchemaValidator`` derived from the ``TodoItem`` annotation).
+    """
+
+    def _validator(self):
+        return todo._tool.function_schema.validator
+
+    def test_missing_status_is_rejected(self):
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc:
+            # Salvageable upstream (status -> "pending"); rejected here.
+            self._validator().validate_python(
+                {"todos": [{"id": "1", "content": "a"}], "merge": False}
+            )
+        errors = exc.value.errors()
+        assert any(
+            e["loc"] == ("todos", 0, "status") and e["type"] == "missing"
+            for e in errors
+        )
+
+    def test_bogus_status_is_rejected(self):
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            self._validator().validate_python(
+                {"todos": [{"id": "1", "content": "a", "status": "bogus"}], "merge": False}
+            )
+
+    def test_complete_item_is_accepted(self):
+        # Sanity: a fully-specified item passes the same validator.
+        out = self._validator().validate_python(
+            {"todos": [{"id": "1", "content": "a", "status": "pending"}], "merge": False}
+        )
+        assert out["todos"][0]["status"] == "pending"
