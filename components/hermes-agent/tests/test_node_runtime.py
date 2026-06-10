@@ -107,3 +107,38 @@ class TestDispatch:
 
         monkeypatch.setattr(registry_mod.registry, "dispatch", lambda *a, **k: "[1, 2]")
         assert dispatch("terminal", {}, session_key="k") == [1, 2]
+
+
+class TestSessionIsolationRegistration:
+    """dispatch() must register the session_key with the vendored override
+    registry — upstream's sanctioned seam for per-task sandbox isolation —
+    otherwise ``_resolve_container_task_id`` collapses every task_id to
+    "default" and all sessions share one shell environment (ADR-0004).
+    """
+
+    def test_dispatch_registers_session_key(self, monkeypatch):
+        from calfkit_hermes._vendor.tools import registry as registry_mod
+        from calfkit_hermes._vendor.tools import terminal_tool
+
+        monkeypatch.setattr(registry_mod.registry, "dispatch", lambda *a, **k: "{}")
+        key = "agent-reg-test:default"
+        terminal_tool._task_env_overrides.pop(key, None)
+
+        dispatch("terminal", {"command": "true"}, session_key=key)
+
+        assert key in terminal_tool._task_env_overrides
+        assert terminal_tool._resolve_container_task_id(key) == key
+        terminal_tool.clear_task_env_overrides(key)
+
+    def test_dispatch_does_not_clobber_existing_overrides(self, monkeypatch):
+        from calfkit_hermes._vendor.tools import registry as registry_mod
+        from calfkit_hermes._vendor.tools import terminal_tool
+
+        monkeypatch.setattr(registry_mod.registry, "dispatch", lambda *a, **k: "{}")
+        key = "agent-clobber-test:default"
+        terminal_tool.register_task_env_overrides(key, {"docker_image": "img"})
+
+        dispatch("terminal", {"command": "true"}, session_key=key)
+
+        assert terminal_tool._task_env_overrides[key] == {"docker_image": "img"}
+        terminal_tool.clear_task_env_overrides(key)

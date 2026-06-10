@@ -32,8 +32,10 @@ class TodoStore:
       - status: pending | in_progress | completed | cancelled
     """
 
-    def __init__(self):
-        self._items: List[Dict[str, str]] = []
+    def __init__(self, items: Optional[List[Dict[str, str]]] = None):
+        # calfkit seed seam (ADR-0003): seed stored items WITHOUT re-validating
+        # (re-running write()/_validate would collapse empty/"?"-id items).
+        self._items: List[Dict[str, str]] = list(items) if items else []
 
     def write(self, todos: List[Dict[str, Any]], merge: bool = False) -> List[Dict[str, str]]:
         """

@@ -52,6 +52,23 @@ def ensure_tools_discovered() -> None:
         _discovered = True
 
 
+def _ensure_session_isolated(session_key: str) -> None:
+    """Register the session_key with upstream's per-task override registry.
+
+    ``_resolve_container_task_id`` collapses every task_id to ``"default"``
+    (one shared shell environment) UNLESS the task_id is registered via
+    ``register_task_env_overrides`` — upstream's documented seam for
+    infrastructure that needs per-task isolated sandboxes, which is exactly
+    what this node is. An empty overrides dict changes nothing else: the only
+    read site falls back to ``{}`` anyway. Racing threads register the same
+    empty value, so no lock is needed.
+    """
+    from calfkit_hermes._vendor.tools import terminal_tool
+
+    if session_key not in terminal_tool._task_env_overrides:
+        terminal_tool.register_task_env_overrides(session_key, {})
+
+
 def dispatch(name: str, args: dict[str, Any], *, session_key: str, **kwargs: Any) -> Any:
     """Call a vendored tool through the upstream registry seam.
 
@@ -62,6 +79,7 @@ def dispatch(name: str, args: dict[str, Any], *, session_key: str, **kwargs: Any
     ensure_tools_discovered()
     from calfkit_hermes._vendor.tools.registry import registry
 
+    _ensure_session_isolated(session_key)
     result = registry.dispatch(name, args, task_id=session_key, **kwargs)
     try:
         return json.loads(result)

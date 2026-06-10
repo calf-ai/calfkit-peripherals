@@ -2,6 +2,9 @@
 snapshot-based statefulness (env vars + cwd persist across calls).
 """
 import json
+import shutil
+import tempfile
+from pathlib import Path
 
 
 def _local_env(cwd):
@@ -45,19 +48,25 @@ def _dispatch(name, args, task_id):
     return registry.dispatch(name, args, task_id=task_id)
 
 
-def test_file_tools_write_read_patch_round_trip(tmp_path):
-    f = tmp_path / "f.txt"
-    task = "smoke-files"
+def test_file_tools_write_read_patch_round_trip():
+    # Not pytest's tmp_path: on macOS it lives under /private/var/..., which the
+    # vendored sensitive-path guard (_SENSITIVE_PATH_PREFIXES) refuses to write to.
+    tmp = Path(tempfile.mkdtemp(dir="/tmp", prefix="hermes-smoke-"))
+    try:
+        f = tmp / "f.txt"
+        task = "smoke-files"
 
-    _dispatch("write_file", {"path": str(f), "content": "alpha\nbeta\n"}, task)
-    assert f.read_text() == "alpha\nbeta\n"
+        _dispatch("write_file", {"path": str(f), "content": "alpha\nbeta\n"}, task)
+        assert f.read_text() == "alpha\nbeta\n"
 
-    read = json.loads(_dispatch("read_file", {"path": str(f)}, task))
-    assert "alpha" in read["content"] and "beta" in read["content"]
+        read = json.loads(_dispatch("read_file", {"path": str(f)}, task))
+        assert "alpha" in read["content"] and "beta" in read["content"]
 
-    _dispatch("patch", {"mode": "replace", "path": str(f),
-                        "old_string": "alpha", "new_string": "gamma"}, task)
-    assert f.read_text() == "gamma\nbeta\n"
+        _dispatch("patch", {"mode": "replace", "path": str(f),
+                            "old_string": "alpha", "new_string": "gamma"}, task)
+        assert f.read_text() == "gamma\nbeta\n"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def test_process_tool_list_is_empty_on_fresh_session():
