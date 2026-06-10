@@ -350,9 +350,8 @@ class TestProcessOwnershipGuard:
         assert "error" not in logged
         assert "bye" in logged["output"]
 
-    def test_list_and_submit_are_not_blocked_by_the_guard(self, monkeypatch):
-        # 'list' takes no handle and must never trigger ownership verification;
-        # 'submit' is a handle action but the guard must let owned handles pass.
+    def test_list_is_not_blocked_by_the_guard(self, monkeypatch):
+        # 'list' takes no handle and must never trigger ownership verification.
         from calfkit_hermes._vendor.tools import registry as registry_mod
 
         real_dispatch = registry_mod.registry.dispatch
@@ -367,6 +366,19 @@ class TestProcessOwnershipGuard:
         monkeypatch.setattr(registry_mod.registry, "dispatch", tracking_dispatch)
         run_process(a, action="list")
         assert calls == ["list"]
+
+    def test_owner_submit_passes_the_guard(self):
+        # 'submit' is a guarded handle action (it writes raw stdin); the guard
+        # must let the OWNER's handle through to upstream.
+        owner = make_ctx(agent_name=agent("own-submit"))
+        started = run_terminal(owner, command="cat", background=True, pty=True)
+        sid = started["session_id"]
+        try:
+            submitted = run_process(owner, action="submit", session_id=sid, data="hi")
+            assert submitted.get("status") != "not_found"
+            assert "No process with ID" not in str(submitted.get("error", ""))
+        finally:
+            run_process(owner, action="kill", session_id=sid)
 
     def test_foreign_poll_does_not_mutate_owner_state(self):
         owner = make_ctx(agent_name=agent("own-safe"))

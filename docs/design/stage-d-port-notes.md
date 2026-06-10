@@ -96,6 +96,18 @@ implementation (2026-06-10). Posted as a PR comment at the end per request.
     NODE.md. Script-body cwd is the node's, not the session's (docstring
     corrected); in-script *tool calls* are session-scoped.
 
+16. **Round 2 (whole-diff convergence review): CONVERGED.** An independent
+    reviewer re-verified every round-1 fix against the vendored seams (drop-None
+    safety swept across all eight registered handlers; the ownership guard's
+    task_id chain traced end-to-end including the `_resolve_container_task_id`
+    registration; the execute_code fallback lines quoted; calfkit's
+    exception→`FailedToolCall` path confirmed for the fail-closed ValueError)
+    and ran both suites (hermes deterministic ×2). Verdict: no
+    critical/major/minor issues introduced; two NITs, one fixed (an
+    over-claiming test name — now split, with a real owned-`submit`-passes-guard
+    test), one deliberately kept (the guard's second dispatch round-trip — it
+    stays at the public seam by design).
+
 ## Known limitations (accepted, by your in-memory decision)
 
 7. **Stateful nodes are single-process.** calfkit partitions by correlation id
