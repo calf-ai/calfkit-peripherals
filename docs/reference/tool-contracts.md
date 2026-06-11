@@ -1,13 +1,13 @@
 # Tool node contracts
 
-Interface reference for every calfkit tool node in this repo. Each component's
-`NODE.md` is the authoritative per-component contract; this page is the
+Interface reference for every calfkit tool node in this repo. Each source's
+`NODE.md` is the authoritative per-source contract; this page is the
 roll-up index.
 
-| Component | Authoritative contract | Nodes |
+| Source | Authoritative contract | Nodes |
 |---|---|---|
-| `components/hermes-agent` | [`NODE.md`](../../components/hermes-agent/NODE.md) | `terminal`, `process`, `read_file`, `write_file`, `patch`, `search_files`, `todo`, `execute_code`, `web_search`, `web_extract` |
-| `components/pydantic-web-fetch` | [`NODE.md`](../../components/pydantic-web-fetch/NODE.md) | `web_fetch` |
+| `hermes` | [`NODE.md`](../../vendor/hermes/NODE.md) | `terminal`, `process`, `read_file`, `write_file`, `patch`, `search_files`, `todo`, `execute_code`, `web_search`, `web_extract` |
+| `web_fetch` | [`NODE.md`](../../vendor/web_fetch/NODE.md) | `web_fetch` |
 
 ## Common contract (all nodes)
 
@@ -19,8 +19,8 @@ roll-up index.
   not part of the LLM-facing schema.
 - **Reply:** the value listed per node. A raised exception becomes a calfkit
   `FailedToolCall` reply.
-- **Imports:** `from calfkit_hermes.node import <name>` (also `HERMES_NODES`,
-  the list of all ten) · `from calfkit_pydantic_web_fetch.node import web_fetch`.
+- **Imports:** `from calfkit_tools.hermes.node import <name>` (also `HERMES_NODES`,
+  the list of all ten) · `from calfkit_tools.web_fetch.node import web_fetch`.
 
 ### Wiring channels
 
@@ -37,7 +37,7 @@ Tenancy key (stateful hermes nodes):
 
 ### Environment configuration
 
-Defined in [`hermes NODE.md` § Configuration](../../components/hermes-agent/NODE.md#configuration-env-vars-per-adr-0002):
+Defined in [`hermes NODE.md` § Configuration](../../vendor/hermes/NODE.md#configuration-env-vars-per-adr-0002):
 `WEB_SEARCH_BACKEND` (default `ddgs`), `WEB_EXTRACT_BACKEND` (default
 `tavily`), `BRAVE_SEARCH_API_KEY` / `SEARXNG_URL` / `TAVILY_API_KEY`,
 `EXECUTE_CODE_ENABLED_TOOLS`, `TERMINAL_ENV` (default `local`),
@@ -59,7 +59,7 @@ NODE.md's deployment section.
 State for all nodes below is in-memory and scoped by `session_key`; replies
 are the upstream tool's JSON payload parsed to a `dict` (upstream's
 `{"error": ...}` convention passes through). Contract detail:
-[`hermes NODE.md`](../../components/hermes-agent/NODE.md).
+[`hermes NODE.md`](../../vendor/hermes/NODE.md).
 
 ### `terminal`
 
@@ -210,9 +210,9 @@ Result order is not guaranteed — correlate by `url`. Provider selected by
 
 ---
 
-## pydantic-web-fetch node
+## web_fetch node
 
-Contract detail: [`pydantic NODE.md`](../../components/pydantic-web-fetch/NODE.md).
+Contract detail: [`web_fetch NODE.md`](../../vendor/web_fetch/NODE.md).
 
 ### `web_fetch`
 

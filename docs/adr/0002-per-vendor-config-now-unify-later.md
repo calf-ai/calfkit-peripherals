@@ -41,3 +41,16 @@ fidelity** (faithful vendoring, no surgery), not for function. To keep that prov
 node test asserts the resolver is never imported/called. The live "per-vendor config"
 is the env selection, not `config.yaml`; the unification of *that* is the known,
 deferred follow-up at the calfkit integration boundary.
+
+## Update — packaging unified (2026-06-10)
+
+The "unify later" promised here is now **partially realized** at the *packaging* layer:
+the per-source independent packages (`calfkit-hermes`, `calfkit-pydantic-web-fetch`) were
+folded into a single distribution, **`calfkit-tools`**, with each source as a subpackage
+(`src/calfkit_tools/<source>/`) and provenance moved to `vendor/<source>/`. One
+`pyproject.toml` now carries all base deps and shared backend extras.
+
+This does **not** supersede the decision above. The env-driven, per-source provider
+selection (`WEB_SEARCH_BACKEND` / `WEB_EXTRACT_BACKEND`, etc.) is unchanged, the vendored
+`config.yaml` resolver remains dormant, and a **unified config layer** is still the open
+follow-up. What changed is distribution shape, not config semantics.

@@ -1,5 +1,7 @@
 # Design: Todo tool (`todo`) — vendoring & calfkit integration
 
+> **Note (2026-06-10):** Pre-unification port-design record. Packaging has since been unified into a single `calfkit-tools` distribution — see [`../project-structure.md`](../project-structure.md) for the current layout (`src/calfkit_tools/<source>/`; provenance in `vendor/<source>/`). `components/<source>/` paths and per-component package names (`calfkit-hermes`, `calfkit-pydantic-web-fetch`) below describe the original design and are kept as history.
+
 **Status:** Implemented (vendor phase). Deep-review round 1 + convergence complete;
 the durable Store + node adapter are deferred (gated on the calfkit Kafka contract).
 **Date:** 2026-06-08
