@@ -1,31 +1,57 @@
-# 🐮 calfkit-peripherals
+# 🐮 calfkit-tools
 
-Shared monorepo where **calfkit** vendors agent tools ported from many upstream open-source codebases into one place.
+A single distribution where **calfkit** vendors agent tools ported from many upstream
+open-source codebases into one place.
 
 calfkit's tool interface is **Kafka-based** (language-agnostic): a "node tool" is a process
-that consumes a request topic and produces a reply. So this repo is a **polyglot
-monorepo of node components** — each component vendors one upstream source and exposes
-its tools over the calfkit Kafka contract.
+that consumes a request topic and produces a reply. This repo packages those tools as one
+installable distribution, **`calfkit-tools`** — organised internally by the upstream source
+each tool was vendored from, each a subpackage exposing its tools over the calfkit Kafka
+contract.
 
 ## Layout
 
-- `components/<source>/` — one self-contained node component per upstream source.
-- `components/_template/` — copy this to start a new port.
-- `docs/project-structure.md` — **start here** to add a port.
+- `src/calfkit_tools/<source>/` — one subpackage per upstream source (e.g. `hermes`,
+  `web_fetch`); its tool nodes live under `<source>/node/`.
+- `vendor/<source>/` — provenance only (`LICENSE`, `METADATA.yaml`, `NODE.md`, `README.md`,
+  `patches/`). Never on `sys.path`, never in the wheel.
+- `vendor/_template/` — copy this to start a new source.
+- `tests/<source>/` — per-source test suites.
+- `pyproject.toml` — the single `calfkit-tools` distribution (deps + extras).
+- `docs/project-structure.md` — **start here** to add a source.
 - `docs/reference/tool-contracts.md` — roll-up of every tool node's interface
   contract (params, deps/resource wiring, env config, reply shapes); each
-  component's `NODE.md` stays authoritative.
+  source's `vendor/<source>/NODE.md` stays authoritative.
 - `docs/design/` — per-tool design docs (e.g. the hermes-agent shell+file port).
 - `docs/tools-research/` — the upstream survey that informed which tools to vendor.
-- `THIRD_PARTY_NOTICES.md` — aggregated attribution index (per-component `LICENSE` +
-  `METADATA.yaml` are authoritative).
+- `THIRD_PARTY_NOTICES.md` — aggregated attribution index (per-source `vendor/<source>/LICENSE`
+  + `METADATA.yaml` are authoritative).
 
-## Adding a port
+## Install
 
-Copy `components/_template/` → `components/<source>/` and follow
-[`docs/project-structure.md`](docs/project-structure.md). Vendor **by source**
-(license-first, per the `open-source-vendoring-best-practices` conventions), expose **by tool**, and
-keep upstream code import-rewritten under `_vendor/`.
+One distribution covers every default tool path:
+
+```bash
+pip install calfkit-tools          # or: uv add calfkit-tools
+```
+
+The base install runs all tools with their default backends. Three **opt-in** extras enable
+remote shell-execution backends only (the default local backend needs none of them):
+
+```bash
+pip install "calfkit-tools[shell-docker]"   # docker backend
+pip install "calfkit-tools[shell-modal]"    # modal backend
+pip install "calfkit-tools[shell-daytona]"  # daytona backend
+pip install "calfkit-tools[all]"            # all three
+```
+
+## Adding a source
+
+Add code under `src/calfkit_tools/<source>/`, provenance under `vendor/<source>/`, tests under
+`tests/<source>/`, and any new deps/extras to the root `pyproject.toml`. Follow
+[`docs/project-structure.md`](docs/project-structure.md). Vendor **by source** (license-first,
+per the `open-source-vendoring-best-practices` conventions), expose **by tool**, and keep
+upstream code import-rewritten under `_vendor/`.
 
 ## Status
 
@@ -34,10 +60,10 @@ keep upstream code import-rewritten under `_vendor/`.
 — ADR-0004). Import-and-deploy:
 
 ```python
-from calfkit_hermes.node import HERMES_NODES          # terminal, process, files, todo, web, execute_code
-from calfkit_pydantic_web_fetch.node import web_fetch
+from calfkit_tools.hermes.node import HERMES_NODES          # terminal, process, files, todo, web, execute_code
+from calfkit_tools.web_fetch.node import web_fetch
 ```
 
-See [`docs/design/node-port.md`](docs/design/node-port.md) and each component's
-`NODE.md` for contracts, wiring, and the trust model. Durable state and security
-hardening remain deferred.
+See [`docs/design/node-port.md`](docs/design/node-port.md) and each source's
+`vendor/<source>/NODE.md` for contracts, wiring, and the trust model. Durable state and
+security hardening remain deferred.

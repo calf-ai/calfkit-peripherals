@@ -1,0 +1,12 @@
+# Provenance for a vendored source (Chromium README.chromium-style schema).
+name: <source-name>
+homepage: <upstream repo URL>
+revision: <commit SHA, pinned>
+retrieved: <YYYY-MM-DD>
+license: <SPDX id>            # permissive only
+license_file: LICENSE
+provides: []                  # calfkit tools this source exposes, e.g. [shell, files]
+files: []                     # vendored paths / globs (under src/calfkit_tools/<source>/_vendor/)
+secondary_origins: []         # upstreams the source itself ported code from: {name, license, files}
+local_modifications:
+  - "Mechanical import rewrite: <pkg>.* -> calfkit_tools.<source>._vendor.<pkg>.*"

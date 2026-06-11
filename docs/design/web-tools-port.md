@@ -1,5 +1,7 @@
 # Web tools vendoring — overview (index)
 
+> **Note (2026-06-10):** Pre-unification port-design record. Packaging has since been unified into a single `calfkit-tools` distribution — see [`../project-structure.md`](../project-structure.md) for the current layout (`src/calfkit_tools/<source>/`; provenance in `vendor/<source>/`). `components/<source>/` paths and per-component package names (`calfkit-hermes`, `calfkit-pydantic-web-fetch`) below describe the original design and are kept as history.
+
 **Date:** 2026-06-08 · **Owners:** Ryan · **Status:** design converged (grill + deep-review
 round 1); per-tool specs ready to implement.
 
@@ -24,7 +26,7 @@ is touched by both (each appends its own entry).
 
 ## Shared posture & boundaries
 - **Vendor, don't hand-roll.** "Buy" = vendor existing upstream source; the repo never takes a
-  pip dependency (see [`CONTEXT.md`](../../CONTEXT.md)). Net hand-roll across both tracks: the
+  pip dependency (see [`project-structure.md`](../project-structure.md)). Net hand-roll across both tracks: the
   inlined leaf helpers + streaming restructure (`web_fetch`), the `asyncio.to_thread` offload
   (`web_search`), and the two `node/` Kafka adapters.
 - **Out-of-scope = agent-layer, not the node** (a recurring boundary for both): untrusted-content
@@ -36,7 +38,7 @@ is touched by both (each appends its own entry).
 Per [`project-structure.md`](../project-structure.md): vendor by source, expose by tool;
 polyglot Kafka-node components; `_vendor/` (verbatim + import-rewritten), `_shims/` (runtime
 edges), `node/` (the calfkit Kafka adapter — your code), `tests/`. Glossary in
-[`CONTEXT.md`](../../CONTEXT.md).
+[`project-structure.md`](../project-structure.md).
 
 ## Status
 Both specs are **design-converged** (grill complete; deep-review **rounds 1–2** done — full

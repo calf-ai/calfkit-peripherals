@@ -1,5 +1,7 @@
 # Design: `web_fetch` tool — vendoring pydantic-ai's SSRF-safe fetcher
 
+> **Note (2026-06-10):** Pre-unification port-design record. Packaging has since been unified into a single `calfkit-tools` distribution — see [`../project-structure.md`](../project-structure.md) for the current layout (`src/calfkit_tools/<source>/`; provenance in `vendor/<source>/`). `components/<source>/` paths and per-component package names (`calfkit-hermes`, `calfkit-pydantic-web-fetch`) below describe the original design and are kept as history.
+
 **Status:** Draft — design converged (grill + deep-review rounds 1–2). Ready to implement.
 **Date:** 2026-06-08
 **Owners:** Ryan

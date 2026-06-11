@@ -1,5 +1,7 @@
 # Design: Shell + File tool — vendoring & calfkit integration
 
+> **Note (2026-06-10):** Pre-unification port-design record. Packaging has since been unified into a single `calfkit-tools` distribution — see [`../project-structure.md`](../project-structure.md) for the current layout (`src/calfkit_tools/<source>/`; provenance in `vendor/<source>/`). `components/<source>/` paths and per-component package names (`calfkit-hermes`, `calfkit-pydantic-web-fetch`) below describe the original design and are kept as history.
+
 **Status:** Draft (deep-review rounds 1–2 complete). Source = **hermes-agent** (confirmed; agent-zero re-evaluated and rejected — see §10).
 **Convergence (round 2):** Stages A–C **CONVERGED** — ready to implement, incl. `execute_code` (PTC) **kept** (cheap — see §12) + a defined test gate. **Stage D NOT converged** — a dedicated security + multi-tenant + Kafka-contract design (and a round-3 review) is required before any Stage-D work (see §12).
 **Date:** 2026-06-07

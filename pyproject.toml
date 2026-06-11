@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "calfkit-tools"
+version = "0.1.0"
+description = "Vendored agent tools for the calfkit SDK: hermes shell/files/web/todo and an SSRF-safe web_fetch, each deployable as a calfkit tool node."
+readme = "README.md"
+requires-python = ">=3.11"
+# First-party glue (node wrappers, package scaffolding) is Apache-2.0 (repo LICENSE);
+# the vendored upstream trees under src/calfkit_tools/*/_vendor are MIT. The bundled
+# notices for every source travel in the distribution via license-files (below).
+license = "Apache-2.0 AND MIT"
+license-files = [
+    "LICENSE",                 # repo's own (Apache-2.0)
+    "THIRD_PARTY_NOTICES.md",  # aggregated attribution index
+    "vendor/hermes/LICENSE",   # upstream NousResearch/hermes-agent (MIT)
+    "vendor/web_fetch/LICENSE", # upstream pydantic/pydantic-ai (MIT)
+]
+authors = [{ name = "calf-ai" }]
+keywords = ["calfkit", "agent", "agent-tools", "llm", "kafka", "tools"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "calfkit>=0.9.0,<0.10",
+    "pydantic",                            # node/files.py, node/shell.py import at module top
+    "typing_extensions",                   # node/todo.py: TypedDict in a tool signature (pydantic needs it on Py<3.12)
+    "psutil",                              # hermes process-tree kill / pid liveness
+    "requests",                            # hermes managed_modal imports at module top
+    "PyYAML",                              # hermes i18n / utils load YAML
+    "ptyprocess; sys_platform != 'win32'", # hermes PTY background processes
+    "httpx>=0.27",                         # web_fetch SSRF engine + httpx-backed search providers
+    "markdownify>=1.2",                    # web_fetch HTML -> markdown
+    "ddgs",                                # default web_search provider (works out of the box)
+]
+
+[project.optional-dependencies]
+# Remote shell-execution backends. The default (local) backend needs none of these; each
+# SDK is lazy-imported by its backend module, so a base install runs locally and these
+# extras enable the corresponding remote backend.
+shell-docker = ["docker"]
+shell-modal = ["modal"]
+shell-daytona = ["daytona-sdk"]
+all = ["calfkit-tools[shell-docker,shell-modal,shell-daytona]"]
+
+[project.urls]
+Homepage = "https://github.com/calf-ai/calfkit-peripherals"
+Repository = "https://github.com/calf-ai/calfkit-peripherals"
+Issues = "https://github.com/calf-ai/calfkit-peripherals/issues"
+
+[dependency-groups]
+# Dev/test deps — not shipped to consumers. anyio backs the web_fetch async test suites
+# (pytest.mark.anyio); it is also a transitive calfkit dep but is declared here explicitly
+# because the tests depend on it directly.
+dev = ["pytest>=8", "anyio"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/calfkit_tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

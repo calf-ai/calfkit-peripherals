@@ -1,5 +1,7 @@
 # Stage D — the node layer: every vendored tool as a calfkit tool node
 
+> **Note (2026-06-10):** Pre-unification port-design record. Packaging has since been unified into a single `calfkit-tools` distribution — see [`../project-structure.md`](../project-structure.md) for the current layout (`src/calfkit_tools/<source>/`; provenance in `vendor/<source>/`). `components/<source>/` paths and per-component package names (`calfkit-hermes`, `calfkit-pydantic-web-fetch`) below describe the original design and are kept as history.
+
 **Status:** accepted design · 2026-06-10 · governs the `node/` layer of every component
 **Decisions recorded:** ADR-0004 (tenancy key + in-memory state); ADR-0002 (env-var
 provider selection); ADR-0003 (todo Operator/Store seam). Glossary: `CONTEXT.md`
