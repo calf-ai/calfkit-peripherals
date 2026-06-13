@@ -97,4 +97,19 @@ source = ["src/calfkit_tools"]
 branch = true
 
 [tool.coverage.report]
-omit = ["*/__init__.py"]
+omit = [
+    "*/__init__.py",
+    # Remote shell-execution backends: opt-in Stage-D infrastructure, not part of the
+    # supported default surface. The node defaults to (and CI only exercises) the local
+    # backend; these need live Docker/Modal/Daytona/SSH/Singularity services to run and
+    # have no vendored tests. Excluded so the badge reflects the code we ship-and-support.
+    # The local backend itself (environments/local.py, environments/base.py) stays.
+    "*/_vendor/tools/environments/docker.py",
+    "*/_vendor/tools/environments/modal.py",
+    "*/_vendor/tools/environments/modal_utils.py",
+    "*/_vendor/tools/environments/managed_modal.py",
+    "*/_vendor/tools/environments/daytona.py",
+    "*/_vendor/tools/environments/ssh.py",
+    "*/_vendor/tools/environments/singularity.py",
+    "*/_vendor/tools/environments/file_sync.py",
+]
