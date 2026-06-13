@@ -59,7 +59,7 @@ Issues = "https://github.com/calf-ai/calfkit-peripherals/issues"
 # Dev/test deps — not shipped to consumers. anyio backs the web_fetch async test suites
 # (pytest.mark.anyio); it is also a transitive calfkit dep but is declared here explicitly
 # because the tests depend on it directly.
-dev = ["pytest>=8", "anyio"]
+dev = ["pytest>=8", "pytest-cov", "anyio"]
 
 [tool.hatch.build.targets.sdist]
 # Strict allowlist (only-include restricts the file walk itself): hatchling
@@ -79,3 +79,15 @@ packages = ["src/calfkit_tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+# ``relative_files`` is mandatory for python-coverage-comment-action.
+# coverage.py records absolute file paths by default, but the action reads the
+# .coverage file inside its own Docker container, whose workspace path differs
+# from the runner's. Repo-relative paths are the only ones that resolve in both.
+relative_files = true
+source = ["src/calfkit_tools"]
+branch = true
+
+[tool.coverage.report]
+omit = ["*/__init__.py"]

@@ -22,6 +22,17 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
 
+    # python-coverage-comment-action needs ``contents: write`` to commit the
+    # badge + coverage data to its data branch
+    # (``python-coverage-comment-action-data``) on pushes to main, and
+    # ``pull-requests: write`` to post the coverage comment on same-repo PRs.
+    # Fork and Dependabot PRs run with a read-only token regardless (GitHub
+    # forces this); for those, the action writes a comment artifact that the
+    # trusted ``coverage.yml`` workflow posts via ``workflow_run``.
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -40,4 +51,28 @@ jobs:
         run: uv sync --group dev
 
       - name: Run tests
-        run: uv run pytest tests/ -v --tb=short
+        # Coverage is collected on the 3.11 leg only (one .coverage file for
+        # the comment action below); the other legs run plain pytest.
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.11" ]; then
+            uv run pytest tests/ -v --tb=short --cov --cov-report=term-missing
+          else
+            uv run pytest tests/ -v --tb=short
+          fi
+
+      - name: Coverage comment
+        id: coverage_comment
+        if: matrix.python-version == '3.11'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Thresholds set badge colour only; they do NOT gate CI.
+          MINIMUM_GREEN: 90
+          MINIMUM_ORANGE: 70
+
+      - name: Store coverage comment (for fork / Dependabot PRs)
+        uses: actions/upload-artifact@v7
+        if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+        with:
+          name: python-coverage-comment-action
+          path: python-coverage-comment-action.txt

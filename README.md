@@ -1,5 +1,9 @@
 # 🐮 calfkit-tools
 
+[![Tests](https://github.com/calf-ai/calfkit-peripherals/actions/workflows/test.yml/badge.svg)](https://github.com/calf-ai/calfkit-peripherals/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/calf-ai/calfkit-peripherals/python-coverage-comment-action-data/endpoint.json)](https://github.com/calf-ai/calfkit-peripherals/tree/python-coverage-comment-action-data)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+
 A single distribution where **calfkit** vendors agent tools ported from many upstream
 open-source codebases into one place.
 
