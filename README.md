@@ -5,32 +5,28 @@
 | Name                                                                   |    Stmts |     Miss |   Branch |   BrPart |   Cover |   Missing |
 |----------------------------------------------------------------------- | -------: | -------: | -------: | -------: | ------: | --------: |
 | src/calfkit\_tools/hermes/\_shims/agent/auxiliary\_client.py           |        2 |        1 |        0 |        0 |     50% |        11 |
-| src/calfkit\_tools/hermes/\_shims/agent/lsp/range\_shift.py            |        3 |        3 |        0 |        0 |      0% |       2-6 |
-| src/calfkit\_tools/hermes/\_shims/agent/lsp/reporter.py                |        6 |        6 |        2 |        0 |      0% |      4-11 |
 | src/calfkit\_tools/hermes/\_shims/agent/lsp/servers.py                 |        2 |        0 |        0 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_shims/gateway/session\_context.py          |        7 |        0 |        0 |        0 |    100% |           |
-| src/calfkit\_tools/hermes/\_shims/gateway/status.py                    |       19 |       12 |        2 |        1 |     38% | 13, 18-28 |
+| src/calfkit\_tools/hermes/\_shims/gateway/status.py                    |       19 |        0 |        2 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_shims/hermes\_cli/\_subprocess\_compat.py  |        7 |        2 |        2 |        1 |     67% |     15-17 |
 | src/calfkit\_tools/hermes/\_shims/hermes\_cli/auth.py                  |        3 |        1 |        0 |        0 |     67% |        21 |
-| src/calfkit\_tools/hermes/\_shims/hermes\_cli/config.py                |       26 |        5 |        6 |        3 |     75% |34, 39-40, 57, 61 |
+| src/calfkit\_tools/hermes/\_shims/hermes\_cli/config.py                |       26 |        3 |        6 |        1 |     88% |34, 57, 61 |
 | src/calfkit\_tools/hermes/\_shims/hermes\_cli/nous\_account.py         |       53 |        0 |        0 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_shims/hermes\_cli/plugins.py               |        3 |        0 |        0 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_shims/hermes\_cli/profiles.py              |        2 |        0 |        0 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_shims/model\_tools.py                      |       30 |        8 |        6 |        0 |     72% |     46-53 |
-| src/calfkit\_tools/hermes/\_vendor/agent/async\_utils.py               |       20 |       13 |        6 |        0 |     27% |     54-68 |
-| src/calfkit\_tools/hermes/\_vendor/agent/file\_safety.py               |      202 |       49 |       72 |       11 |     77% |15-16, 24-25, 92-93, 121-122, 129-130, 135-136, 141-142, 223-224, 237, 261-262, 264, 277-278, 280, 289, 301, 351-352, 357-\>361, 384-385, 397, 412, 491-494, 516-517, 524-527, 551, 600-606, 629 |
-| src/calfkit\_tools/hermes/\_vendor/agent/i18n.py                       |      118 |       48 |       44 |        9 |     54% |108-111, 128-138, 148-162, 178-181, 187-191, 205-\>exit, 224-226, 236-238, 245, 248, 276, 281-282, 287-292 |
-| src/calfkit\_tools/hermes/\_vendor/agent/redact.py                     |      134 |       58 |       54 |       12 |     55% |237, 247, 258-270, 279-286, 295, 303-307, 318-323, 349, 351, 355, 372-373, 380, 388-390, 395, 399, 403, 416, 420-425, 453, 484-485, 492, 495-496 |
-| src/calfkit\_tools/hermes/\_vendor/agent/skill\_utils.py               |      319 |      280 |      160 |        1 |      8% |57-62, 73-82, 97-122, 148-169, 193-230, 255-269, 287-314, 318-322, 338, 359-424, 433-435, 443-450, 477-517, 529-556, 567-574, 587-612, 620-626, 638-644, 657-659, 664-666 |
+| src/calfkit\_tools/hermes/\_vendor/agent/file\_safety.py               |      202 |       29 |       72 |        5 |     88% |15-16, 24-25, 92-93, 121-122, 129-130, 135-136, 141-142, 223-224, 261-262, 277-278, 351-352, 357-\>361, 384-385, 397, 493-\>487, 516-517, 551, 629 |
+| src/calfkit\_tools/hermes/\_vendor/agent/i18n.py                       |      118 |        8 |       44 |        1 |     91% |   128-138 |
+| src/calfkit\_tools/hermes/\_vendor/agent/redact.py                     |      134 |       24 |       54 |        4 |     85% |259, 263-264, 279-286, 295, 303-307, 322, 453, 484-485, 492, 495-496 |
 | src/calfkit\_tools/hermes/\_vendor/agent/web\_search\_provider.py      |       22 |        6 |        0 |        0 |     73% |88, 101, 114, 123, 156, 180 |
 | src/calfkit\_tools/hermes/\_vendor/agent/web\_search\_registry.py      |       83 |       24 |       30 |        4 |     65% |109-113, 169-171, 177-179, 185-194, 210-219, 238-239 |
-| src/calfkit\_tools/hermes/\_vendor/hermes\_constants.py                |      198 |      121 |       72 |        7 |     34% |27-28, 33, 41, 47-49, 71, 80-\>108, 85-86, 88-106, 131, 136, 157-165, 174-182, 193-201, 213-221, 258-262, 275-282, 307, 322-329, 338-339, 353-360, 374-391, 408, 414, 436-459 |
+| src/calfkit\_tools/hermes/\_vendor/hermes\_constants.py                |      198 |      101 |       72 |        1 |     44% |47-49, 105-106, 157-165, 174-182, 193-201, 213-221, 275-282, 322-329, 338-339, 353-360, 374-391, 408, 414, 436-459 |
 | src/calfkit\_tools/hermes/\_vendor/tools/ansi\_strip.py                |        7 |        0 |        2 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_vendor/tools/approval.py                   |      586 |      118 |      204 |       32 |     77% |61-64, 93, 103-105, 129-130, 608-612, 629, 631-632, 635-\>638, 646-647, 665, 673, 681, 690-691, 749, 751-753, 763-764, 794-796, 819-823, 856-857, 868-869, 876-878, 880-\>882, 898, 907-909, 922-923, 928-936, 976-983, 1017, 1021, 1025, 1033-1034, 1051-1087, 1111, 1113, 1118, 1150-\>exit, 1168-1171, 1180-1181, 1199-\>1192, 1259, 1270-1274, 1295, 1320-\>1324, 1332-1345, 1385, 1426-1447, 1572, 1653 |
 | src/calfkit\_tools/hermes/\_vendor/tools/binary\_extensions.py         |        6 |        1 |        2 |        1 |     75% |        41 |
 | src/calfkit\_tools/hermes/\_vendor/tools/budget\_config.py             |       20 |        0 |        4 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_vendor/tools/code\_execution\_tool.py      |      671 |      230 |      206 |       30 |     65% |154-155, 203, 277, 492-493, 503, 508-511, 518-526, 530-537, 559-561, 584-585, 599-691, 702-704, 719-724, 743-866, 888, 912, 956, 972, 974-983, 993-\>997, 1001-1002, 1010-1015, 1039-1047, 1052, 1056-1057, 1115, 1150-1151, 1190-1193, 1253, 1269, 1311-\>1314, 1315-1316, 1347-1348, 1386-1387, 1448, 1461-\>1464, 1466-1476, 1486-1489, 1497-1498, 1508-1511, 1514-1523, 1529-1548, 1566-1567, 1642-1643, 1661-1665, 1689 |
-| src/calfkit\_tools/hermes/\_vendor/tools/credential\_files.py          |      205 |       47 |       90 |       11 |     72% |124, 126, 136, 145-171, 188-\>186, 193-195, 236-243, 269, 280, 281-\>274, 286-287, 323-335, 416-420 |
+| src/calfkit\_tools/hermes/\_vendor/tools/credential\_files.py          |      205 |       26 |       90 |       10 |     84% |148-\>147, 164-\>147, 170-171, 188-\>186, 193-195, 236-243, 269, 280, 281-\>274, 286-287, 323-335, 419-420 |
 | src/calfkit\_tools/hermes/\_vendor/tools/env\_passthrough.py           |       60 |       12 |       18 |        1 |     76% |65-66, 115-137 |
 | src/calfkit\_tools/hermes/\_vendor/tools/environments/base.py          |      375 |      107 |       88 |       23 |     68% |39, 48, 71-78, 87-93, 129-130, 144-154, 159-164, 169-170, 175-179, 236-237, 244-245, 340, 393-400, 410, 412, 414, 476-477, 537-544, 549-551, 562, 566-567, 575-590, 596-597, 601-602, 621-623, 645, 659, 672, 694-706, 728, 737-738, 748-749, 752, 764-767, 793, 796-\>803, 805, 845-\>848, 853, 855, 861-862, 883 |
 | src/calfkit\_tools/hermes/\_vendor/tools/environments/local.py         |      310 |       74 |      128 |       16 |     74% |107-113, 118-124, 201-203, 210-211, 217, 225-\>221, 234, 250-285, 307-308, 338, 345-349, 367, 370-371, 409-410, 479-480, 497, 511-\>513, 532-\>539, 558-\>564, 561-562, 579-581, 590-591, 597-598, 603, 610, 614-615, 626-627, 631-637 |
@@ -40,7 +36,6 @@
 | src/calfkit\_tools/hermes/\_vendor/tools/fuzzy\_match.py               |      334 |       33 |      164 |       26 |     87% |184, 201-\>200, 203, 233, 238, 267, 440, 466-469, 503-\>502, 511, 546, 549, 594, 621, 712, 727-731, 738-739, 743-744, 763, 769, 773, 793, 799-802, 809, 828, 837 |
 | src/calfkit\_tools/hermes/\_vendor/tools/interrupt.py                  |       32 |        6 |        6 |        2 |     79% |32, 55, 85, 88, 91, 95 |
 | src/calfkit\_tools/hermes/\_vendor/tools/lazy\_deps.py                 |      207 |       75 |       58 |        6 |     66% |281, 301-302, 307-308, 318-320, 324-326, 335-346, 355-403, 414, 448, 460-469, 479-\>482, 492-494, 568-569, 612-623 |
-| src/calfkit\_tools/hermes/\_vendor/tools/managed\_tool\_gateway.py     |      109 |       80 |       36 |        0 |     20% |32, 36-49, 53-64, 68-72, 85-93, 98-121, 126-133, 138-148, 157-168, 188 |
 | src/calfkit\_tools/hermes/\_vendor/tools/patch\_parser.py              |      315 |       66 |      180 |       30 |     76% |119-\>121, 131-\>133, 143-\>145, 157-159, 172-\>199, 192-197, 215, 219, 261-262, 272, 277, 300-301, 311, 314-322, 384, 392, 395-400, 402-\>374, 410-413, 432, 468-\>467, 475, 489, 493, 506-511, 527, 545-\>539, 558-582, 591, 593, 604, 611 |
 | src/calfkit\_tools/hermes/\_vendor/tools/path\_security.py             |       15 |        0 |        0 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_vendor/tools/process\_registry.py          |      782 |      142 |      258 |       43 |     80% |79-86, 297, 357, 410, 426, 479-480, 489-490, 497-498, 509-\>513, 511-512, 547, 580-583, 641-643, 646-647, 720, 722-725, 758-\>761, 764, 766-767, 772-773, 786-\>exit, 792-\>804, 799, 800-\>804, 809-\>786, 818-819, 824-829, 835-\>854, 838-\>835, 844, 848-851, 856-857, 878-880, 905-906, 911-\>902, 948-949, 959-\>979, 967-\>972, 969-970, 974-977, 980-\>984, 983, 1072-1073, 1079-1080, 1089, 1107, 1111-1118, 1122-1130, 1150-1152, 1157, 1165-1166, 1168-1171, 1174, 1177-1181, 1187, 1199-1200, 1206, 1208, 1216-1227, 1239, 1245-1246, 1249, 1253-1254, 1264-1267, 1294, 1330-1341, 1380-\>1379, 1404-1405, 1418-1419, 1425, 1602, 1605-1606 |
@@ -49,14 +44,14 @@
 | src/calfkit\_tools/hermes/\_vendor/tools/thread\_context.py            |       41 |        7 |        6 |        2 |     81% |86-87, 91-\>104, 97-99, 112-113 |
 | src/calfkit\_tools/hermes/\_vendor/tools/tirith\_security.py           |      439 |       98 |      152 |       13 |     76% |62-65, 79-80, 193-194, 256-261, 306-326, 332-\>331, 334, 340-341, 367-369, 386-388, 420, 430-442, 500-501, 569-595, 613-616, 632-641, 653-656, 660-665, 677-\>685, 728 |
 | src/calfkit\_tools/hermes/\_vendor/tools/todo\_tool.py                 |       84 |        5 |       36 |        7 |     90% |58, 64-\>55, 66-\>55, 78-\>76, 136, 140, 144, 202 |
-| src/calfkit\_tools/hermes/\_vendor/tools/tool\_backend\_helpers.py     |       77 |       35 |       18 |        3 |     52% |30-41, 62-64, 73-74, 82, 94-95, 118-\>120, 143, 154-161, 172-182 |
+| src/calfkit\_tools/hermes/\_vendor/tools/tool\_backend\_helpers.py     |       77 |        5 |       18 |        1 |     94% |62-64, 94-95 |
 | src/calfkit\_tools/hermes/\_vendor/tools/tool\_output\_limits.py       |       35 |        0 |        6 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/\_vendor/tools/url\_safety.py                |      133 |        7 |       46 |        0 |     96% |246-247, 261-265, 317-318 |
-| src/calfkit\_tools/hermes/\_vendor/tools/web\_providers/brave\_free.py |       47 |       20 |        2 |        1 |     57% |    73-123 |
-| src/calfkit\_tools/hermes/\_vendor/tools/web\_providers/ddgs.py        |       43 |        6 |        4 |        1 |     85% |50-51, 78, 88-90 |
-| src/calfkit\_tools/hermes/\_vendor/tools/web\_providers/searxng.py     |       46 |       20 |        2 |        1 |     56% |    63-126 |
-| src/calfkit\_tools/hermes/\_vendor/tools/web\_providers/tavily.py      |       77 |       10 |       14 |        3 |     86% |114-115, 155, 170-172, 184, 201-203 |
-| src/calfkit\_tools/hermes/\_vendor/utils.py                            |      166 |      109 |       38 |        3 |     32% |28, 40-41, 57-58, 124, 138-141, 144-151, 176-203, 218-267, 280-283, 291-297, 302, 321-326, 331-335, 351-355, 370-376 |
+| src/calfkit\_tools/hermes/\_vendor/tools/web\_providers/brave\_free.py |       47 |        0 |        2 |        0 |    100% |           |
+| src/calfkit\_tools/hermes/\_vendor/tools/web\_providers/ddgs.py        |       43 |        3 |        4 |        1 |     91% | 50-51, 78 |
+| src/calfkit\_tools/hermes/\_vendor/tools/web\_providers/searxng.py     |       46 |        0 |        2 |        0 |    100% |           |
+| src/calfkit\_tools/hermes/\_vendor/tools/web\_providers/tavily.py      |       77 |        0 |       14 |        0 |    100% |           |
+| src/calfkit\_tools/hermes/\_vendor/utils.py                            |      166 |       93 |       38 |        0 |     42% |176-203, 218-267, 280-283, 291-297, 302, 321-326, 331-335, 351-355, 370-376 |
 | src/calfkit\_tools/hermes/node/\_runtime.py                            |       38 |        1 |        8 |        1 |     96% |        60 |
 | src/calfkit\_tools/hermes/node/code.py                                 |       19 |        0 |        4 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/node/files.py                                |       17 |        0 |        0 |        0 |    100% |           |
@@ -66,7 +61,7 @@
 | src/calfkit\_tools/web\_fetch/\_vendor/\_ssrf.py                       |      207 |        3 |       70 |        0 |     99% |38, 370-371 |
 | src/calfkit\_tools/web\_fetch/\_vendor/common\_tools/web\_fetch.py     |       72 |        0 |       12 |        0 |    100% |           |
 | src/calfkit\_tools/web\_fetch/results.py                               |       10 |        0 |        0 |        0 |    100% |           |
-| **TOTAL**                                                              | **9977** | **2746** | **3518** |  **489** | **70%** |           |
+| **TOTAL**                                                              | **9520** | **2116** | **3314** |  **446** | **76%** |           |
 
 
 ## Setup coverage badge
