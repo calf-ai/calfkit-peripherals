@@ -79,6 +79,10 @@ packages = ["src/calfkit_tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "live: tests that spawn real subprocesses/shells (POSIX-only, timing-sensitive); run on Linux CI",
+    "integration: tests requiring external services or network (not run in normal CI)",
+]
 
 [tool.coverage.run]
 # ``relative_files`` is mandatory for python-coverage-comment-action.

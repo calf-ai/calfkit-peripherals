@@ -15,6 +15,18 @@ from calfkit_tools.hermes._vendor.hermes_constants import get_hermes_home  # noq
 # Import-safe stub; real env hygiene = Stage-D allowlist (see design doc §6.1, §3.2).
 OPTIONAL_ENV_VARS: dict = {}
 
+# Only the subtree vendored tests read from the real upstream DEFAULT_CONFIG. The
+# values mirror tool_output_limits.DEFAULT_MAX_* (kept hardcoded, as upstream's own
+# DEFAULT_CONFIG does, to avoid an import cycle: tool_output_limits imports this
+# module lazily for ``load_config``).
+DEFAULT_CONFIG: dict = {
+    "tool_output": {
+        "max_bytes": 50_000,
+        "max_lines": 2000,
+        "max_line_length": 2000,
+    },
+}
+
 
 def cfg_get(cfg, *keys, default=None):
     """Traverse nested dict keys safely, returning ``default`` on any miss (faithful)."""
