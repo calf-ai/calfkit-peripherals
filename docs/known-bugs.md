@@ -8,6 +8,7 @@ fix shows up as a deliberate change. Fixes are tracked separately.
 - **PINNED** — a regression test asserts the current (buggy) behavior; cited as `file::test`.
 - **VERIFIED** — confirmed by direct execution this session; pinning test still to be written.
 - **FLAGGED** — surfaced in deep source analysis; **not yet independently confirmed** (verify before relying on it).
+- **RESOLVED** — investigated and found NOT to be a bug; a non-reproduction test guards against a future regression.
 
 **Severity** — HIGH (security/data-loss), MEDIUM (incorrect guard / contract violation), LOW (correctness/UX).
 
@@ -77,7 +78,7 @@ fix shows up as a deliberate change. Fixes are tracked separately.
 - **What:** `touch_activity_if_due({}, "x")` raises `KeyError: 'last_touch'`, contradicting the docstring.
   Currently masked because both call sites wrap it in their own try/except, but a future caller relying on the
   documented contract would break.
-- **Status:** VERIFIED (this session). Pinning test to be added in Phase B.
+- **Status:** PINNED — `tests/hermes/test_base_env_behavior.py::test_BUG006_touch_activity_raises_on_missing_last_touch`.
 
 ### BUG-007 — Safe-root write-jail fails open on resolution error
 - **Where:** `agent/file_safety.py` `get_safe_write_root` (returns `None` on any exception) +
@@ -91,7 +92,7 @@ fix shows up as a deliberate change. Fixes are tracked separately.
 - **Where:** `tools/environments/base.py` `_extract_cwd_from_output` (anchors on the *last* marker via `rfind`).
 - **What:** If a command's own stdout contains the per-session marker token, the parser can mis-pair and leave
   a dangling marker fragment in the output returned to the model.
-- **Status:** FLAGGED (analysis). To confirm/pin in Phase B.
+- **Status:** PINNED — `tests/hermes/test_base_env_behavior.py::test_BUG008_extract_cwd_marker_collision_leaks_fragment`.
 
 ### BUG-009 — `tirith_security` fail-open/closed branch is unreachable via the real resolver
 - **Where:** `tools/tirith_security.py` `check_command_security` (`if tirith_path is None: …`).
@@ -119,13 +120,13 @@ fix shows up as a deliberate change. Fixes are tracked separately.
 - **Where:** `tools/process_registry.py` `write_stdin` (PTY path encodes UTF-8 but returns `len(data)`).
 - **What:** For multibyte input, `bytes_written` is the character count, not the byte count;
   `submit_stdin` inherits it.
-- **Status:** FLAGGED (analysis). To confirm/pin in Phase B.
+- **Status:** PINNED — `tests/hermes/test_process_registry_behavior.py::test_BUG012_pty_write_stdin_reports_char_count_not_bytes`.
 
 ### BUG-013 — `kill_process` records `exit_code=-15` even for SIGKILL
 - **Where:** `tools/process_registry.py` `kill_process` (PTY `terminate(force=True)` sends SIGKILL but the
   code records `-15`).
 - **What:** `process(action='kill')` / `list_sessions` report `-15` (SIGTERM) for a force-killed PTY process.
-- **Status:** FLAGGED (analysis). To confirm/pin in Phase B.
+- **Status:** PINNED — `tests/hermes/test_process_registry_behavior.py::test_BUG013_pty_kill_records_sigterm_for_force_sigkill`.
 
 ### BUG-014 — `_reader_loop` final `exit_code` can be `None`
 - **Where:** `tools/process_registry.py` `_reader_loop` (after stdout EOF, `wait(timeout=5)` may time out,
@@ -139,20 +140,24 @@ fix shows up as a deliberate change. Fixes are tracked separately.
   substring, not anchored).
 - **What:** A command whose first output line legitimately contains a known noise phrase (e.g. `echo "no job
   control in this shell"`) has that line silently stripped.
-- **Status:** FLAGGED (analysis). To confirm/pin in Phase B.
+- **Status:** PINNED — `tests/hermes/test_process_registry_behavior.py::test_BUG015_clean_shell_noise_strips_legitimate_first_line`.
 
-### BUG-016 — `_check_lint` can double-substitute a path containing `{file}`
-- **Where:** `tools/file_operations.py` `_check_lint` (`linter_cmd.replace("{file}", path)`).
-- **What:** A path literally named `…/{file}.py` would be mangled by the unbounded `str.replace`. Existing
-  tests cover `{test}`/`{{var}}` (which pass) but not the exact `{file}` token.
-- **Status:** FLAGGED (analysis). To confirm/pin in Phase B.
+### BUG-016 — `_check_lint` `{file}` substitution — INVESTIGATED, NOT A BUG
+- **Where:** `tools/file_operations.py` `_check_lint` (`linter_cmd.replace("{file}", escaped_path)`).
+- **Finding:** Investigated in Phase B and **does not reproduce.** `str.replace` only replaces occurrences in
+  the *original* string and never re-scans the replacement text, and each linter template has exactly one
+  `{file}` placeholder — so a path literally containing `{file}` survives verbatim and the escaped path appears
+  exactly once. (`.py/.json/.yaml/.toml` short-circuit to in-process linters and never reach this line.)
+- **Status:** RESOLVED (not a bug) — pinned as a non-reproduction in
+  `tests/hermes/test_file_operations_behavior.py::TestBug016FilePlaceholderSubstitution`.
 
 ### BUG-017 — `patch_replace` BOM verification asymmetry
 - **Where:** `tools/file_operations.py` `patch_replace` (post-write verify strips BOM; `write_file` restores
   BOM; `read_file_raw` strips BOM — three independent BOM operations).
 - **What:** The three BOM ops must stay mutually consistent; no test exercises BOM + patch together, so a
   divergence would produce a false post-write verification failure.
-- **Status:** FLAGGED (analysis). To confirm/pin in Phase B.
+- **Status:** FLAGGED — investigated in Phase B; the three ops stay consistent on a clean round-trip, so no
+  failing case could be isolated. Left as a fragility to watch, not a confirmed defect.
 
 ### BUG-018 — `_get_max_read_chars` caches the default permanently
 - **Where:** `tools/file_tools.py` `_get_max_read_chars` (caches on first call; the config shim always
