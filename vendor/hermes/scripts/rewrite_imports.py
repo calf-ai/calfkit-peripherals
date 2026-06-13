@@ -37,12 +37,28 @@ def _target(module):
 
 
 def _rewrite_line(line):
-    def repl(m):
+    m = _FROM_RE.match(line)
+    if m:
         target = _target(m.group(2))
-        return m.group(1) + target if target else m.group(0)
+        return m.group(1) + target + line[m.end():] if target else line
 
-    line = _FROM_RE.sub(repl, line)
-    return _IMPORT_RE.sub(repl, line)
+    m = _IMPORT_RE.match(line)
+    if m:
+        module = m.group(2)
+        target = _target(module)
+        if not target:
+            return line
+        rest = line[m.end():]
+        # `import name` binds `name`; rewriting to `import a.b.name` would rebind it
+        # to `a`, breaking `name.attr` references. For a single-segment import with no
+        # existing alias, append `as name` to preserve the binding. (Dotted
+        # `import a.b` accessed as `a.b.attr` can't be preserved with one alias and
+        # does not occur in the vendored trees.)
+        if "." not in module and not re.match(r"\s+as\s", rest):
+            return m.group(1) + target + " as " + module + rest
+        return m.group(1) + target + rest
+
+    return line
 
 
 def rewrite_imports(source):

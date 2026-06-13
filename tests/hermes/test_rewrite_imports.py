@@ -22,9 +22,11 @@ def test_rewrites_vendored_from_import_to_vendor_namespace():
     assert rewrite_imports(src) == expected
 
 
-def test_rewrites_plain_import_statement():
+def test_rewrites_plain_import_statement_preserves_binding_with_alias():
+    # `import hermes_constants` must keep the `hermes_constants` name bound (via `as`),
+    # else `hermes_constants.X` references break after the dotted rewrite.
     src = "import hermes_constants\n"
-    expected = "import calfkit_tools.hermes._vendor.hermes_constants\n"
+    expected = "import calfkit_tools.hermes._vendor.hermes_constants as hermes_constants\n"
     assert rewrite_imports(src) == expected
 
 

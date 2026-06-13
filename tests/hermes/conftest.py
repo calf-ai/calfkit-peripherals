@@ -35,6 +35,45 @@ _VENDORED_SKIPS = {
         "shim hermes_cli.config returns {} by design; config.yaml env_passthrough is dormant in the node",
     "test_vendored_credential_files.py::TestConfigPathTraversal::test_config_legitimate_file_works":
         "shim hermes_cli.config returns {} by design; config-driven credential mounts are dormant in the node",
+    # --- Phase 3 reconciliations / CUT-dependency drops ---
+    "test_vendored_code_execution.py::TestStubSchemaDrift::test_stubs_cover_all_schema_params":
+        "iterates every tool incl. CUT tools.web_tools, which isn't vendored",
+    "test_vendored_registry.py::TestBuiltinDiscovery::test_imports_only_self_registering_modules":
+        "discovers under the _vendor package root (registry importlib-root fix-up); upstream module names/set don't apply",
+    "test_vendored_registry.py::TestBuiltinDiscovery::test_skips_mcp_tool_even_if_it_registers":
+        "discovers under the _vendor package root (registry importlib-root fix-up); upstream module names/set don't apply",
+    "test_vendored_cross_profile_guard.py::TestSkillManageCrossProfileErrorUX":
+        "needs CUT tools.skill_manager_tool",
+    "test_vendored_cross_profile_guard.py::TestSystemPromptActiveProfile::test_named_profile_line_in_prompt_text":
+        "reads CUT agent/system_prompt.py from disk",
+    "test_vendored_interrupt.py::TestPreToolCheck::test_all_tools_skipped_when_interrupted":
+        "needs CUT run_agent (AIAgent)",
+    "test_vendored_interrupt.py::TestRunToolCleanupOnBaseException::test_cleanup_on_base_exception":
+        "needs CUT run_agent (AIAgent)",
+    "test_vendored_terminal_output_transform_hook.py::test_terminal_output_transform_integration_with_real_plugin":
+        "needs the un-shimmed plugin manager (discover_plugins/_plugin_manager)",
+    # Provider-env blocklist: the shim PROVIDER_REGISTRY / OPTIONAL_ENV_VARS are empty by
+    # design, so registry-derived provider keys aren't in the blocklist. Real subprocess
+    # env hygiene in the node is the Stage-D allowlist, not this blocklist (see shim docs).
+    "test_vendored_local_env_blocklist.py::TestProviderEnvBlocklist::test_blocked_vars_are_stripped":
+        "shim PROVIDER_REGISTRY is empty by design; env hygiene is the Stage-D allowlist",
+    "test_vendored_local_env_blocklist.py::TestProviderEnvBlocklist::test_registry_derived_vars_are_stripped":
+        "shim PROVIDER_REGISTRY is empty by design; env hygiene is the Stage-D allowlist",
+    "test_vendored_local_env_blocklist.py::TestProviderEnvBlocklist::test_bedrock_bearer_token_is_stripped":
+        "shim PROVIDER_REGISTRY is empty by design; env hygiene is the Stage-D allowlist",
+    "test_vendored_local_env_blocklist.py::TestProviderEnvBlocklist::test_tool_and_gateway_vars_are_stripped":
+        "shim PROVIDER_REGISTRY is empty by design; env hygiene is the Stage-D allowlist",
+    "test_vendored_local_env_blocklist.py::TestBlocklistCoverage::test_issue_1002_offenders":
+        "shim PROVIDER_REGISTRY is empty by design; env hygiene is the Stage-D allowlist",
+    "test_vendored_local_env_blocklist.py::TestBlocklistCoverage::test_bedrock_bearer_token_is_in_blocklist":
+        "shim PROVIDER_REGISTRY is empty by design; env hygiene is the Stage-D allowlist",
+}
+
+# Pass on CI (no conda); fail only when a conda env is active, because child-python
+# resolution falls back to the conda interpreter instead of the venv/sys.executable.
+_CONDA_SKIPS = {
+    "test_vendored_code_execution_modes.py::TestResolveChildPython::test_project_with_broken_venv_falls_back":
+        "active conda env: child-python falls back to the conda interpreter, not sys.executable (passes on CI)",
 }
 
 # Pass on Linux CI; fail only on macOS because its tmp dir resolves through the
@@ -49,9 +88,20 @@ _DARWIN_SKIPS = {
 }
 
 
+# Vendored files that spawn real subprocesses/shells (POSIX, timing-sensitive). Tagged
+# ``live`` so they run by default but can be deselected with ``-m "not live"`` if flaky.
+_LIVE_FILES = (
+    "test_vendored_file_tools_live.py",
+    "test_vendored_local_background_child_hang.py",
+    "test_vendored_local_interrupt_cleanup.py",
+    "test_vendored_terminal_timeout_output.py",
+)
+
+
 def pytest_collection_modifyitems(config, items):
-    """Skip vendored tests that depend on un-vendored runtime or platform specifics."""
+    """Skip vendored tests that depend on un-vendored runtime or platform specifics; mark live ones."""
     is_darwin = sys.platform == "darwin"
+    in_conda = bool(os.environ.get("CONDA_PREFIX"))
     for item in items:
         for frag, reason in _VENDORED_SKIPS.items():
             if frag in item.nodeid:
@@ -60,6 +110,12 @@ def pytest_collection_modifyitems(config, items):
             for frag, reason in _DARWIN_SKIPS.items():
                 if frag in item.nodeid:
                     item.add_marker(pytest.mark.skip(reason=reason))
+        if in_conda:
+            for frag, reason in _CONDA_SKIPS.items():
+                if frag in item.nodeid:
+                    item.add_marker(pytest.mark.skip(reason=reason))
+        if any(f in item.nodeid for f in _LIVE_FILES):
+            item.add_marker(pytest.mark.live)
 
 
 _SRC = Path(__file__).resolve().parents[2] / "src"
