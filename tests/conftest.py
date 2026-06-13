@@ -11,22 +11,18 @@ import os
 import tempfile
 from pathlib import Path
 
+# macOS resolves the default tmp dir under ``/var/folders/...`` (a sensitive system
+# prefix), which the vendored path-security write-guard refuses to write to — so the
+# many vendored file-write tests fail locally though they pass on Linux CI (whose
+# ``/tmp`` is fine). Point ALL temp allocation at a non-sensitive HOME dir: both pytest's
+# ``tmp_path`` factory and the raw ``tempfile.mkdtemp()`` calls vendored tests make
+# (which ``--basetemp`` would not reach). Done at import — before any tempfile use here —
+# and a no-op on Linux. Resetting ``tempfile.tempdir`` clears the cached default so
+# ``gettempdir()`` re-reads ``TMPDIR``.
+if tempfile.gettempdir().startswith(("/var", "/private")):
+    _tmp_root = Path.home() / ".cache" / "calfkit-pytest-tmp"
+    _tmp_root.mkdir(parents=True, exist_ok=True)
+    os.environ["TMPDIR"] = str(_tmp_root)
+    tempfile.tempdir = None
+
 os.environ.setdefault("HERMES_HOME", tempfile.mkdtemp(prefix="calfkit-tools-test-"))
-
-
-def pytest_configure(config):
-    """Keep the pytest tmp dir off a path the vendored write-guard treats as sensitive.
-
-    macOS resolves the default tmp dir under ``/var/folders/...`` (a sensitive system
-    prefix), so file-write tests that go through the path-security guard fail locally
-    although they pass on Linux CI, whose ``/tmp`` is fine. When the user hasn't set
-    ``--basetemp`` and the default tmp is sensitive, redirect to a HOME-based dir. No-op
-    on Linux. This lives at the tests/ root so it runs as an initial conftest regardless
-    of how pytest is invoked (a subdir conftest's hook runs too late for the tmp factory).
-    """
-    if config.option.basetemp:
-        return
-    if tempfile.gettempdir().startswith(("/var", "/private")):
-        base = Path.home() / ".cache" / "calfkit-pytest-tmp"
-        base.mkdir(parents=True, exist_ok=True)
-        config.option.basetemp = str(base / "bt")

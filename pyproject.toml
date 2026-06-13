@@ -59,7 +59,10 @@ Issues = "https://github.com/calf-ai/calfkit-peripherals/issues"
 # Dev/test deps — not shipped to consumers. anyio backs the web_fetch async test suites
 # (pytest.mark.anyio); it is also a transitive calfkit dep but is declared here explicitly
 # because the tests depend on it directly.
-dev = ["pytest>=8", "pytest-cov", "anyio"]
+# prompt_toolkit is test-only: the vendored approval module's "fail closed when an
+# interactive prompt_toolkit session is active" guard is dormant in the (non-interactive)
+# node, but its security tests import prompt_toolkit to exercise that path.
+dev = ["pytest>=8", "pytest-cov", "anyio", "prompt_toolkit"]
 
 [tool.hatch.build.targets.sdist]
 # Strict allowlist (only-include restricts the file walk itself): hatchling

@@ -90,6 +90,29 @@ def test_preserves_single_quote_style_and_rest_of_line():
     assert out == "m = patch('calfkit_tools.hermes._vendor.tools.approval.detect_dangerous_command')  # comment\n"
 
 
+def test_rewrites_sys_modules_get_and_pop_methods():
+    # The save/restore dict-method forms must use the SAME rewritten key as the
+    # subscript set, or save/restore desync and leak a broken module.
+    src = (
+        'orig = sys.modules.get("tools.tirith_security")\n'
+        'sys.modules["tools.tirith_security"] = None\n'
+        'sys.modules.pop("tools.tirith_security", None)\n'
+    )
+    out = rewrite_test_source(src)
+    assert out.count('"calfkit_tools.hermes._vendor.tools.tirith_security"') == 3
+    assert '"tools.tirith_security"' not in out
+
+
+def test_rewrites_aliased_patch_import():
+    # `from unittest.mock import patch as mock_patch` then `mock_patch("tools.x.y")`.
+    src = (
+        "from unittest.mock import patch as mock_patch\n"
+        'mock_patch("hermes_cli.config.load_config")\n'
+    )
+    out = rewrite_test_source(src)
+    assert 'mock_patch("calfkit_tools.hermes._shims.hermes_cli.config.load_config")' in out
+
+
 def test_is_idempotent():
     src = 'patch("tools.file_tools._get_file_ops")\nfrom tools.registry import registry\n'
     once = rewrite_test_source(src)

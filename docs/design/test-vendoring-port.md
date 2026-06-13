@@ -1,6 +1,9 @@
 # Test-suite vendoring port plan (hermes-agent `tests/tools/` → calfkit-peripherals)
 
-**Status:** PLAN — no test files vendored yet; implementation gated on phase decisions below.
+**Status:** Phases 0-2 IMPLEMENTED (DROP_IN + EASY, ~51 files). Phase 3 (MODERATE) not started.
+Outcome: tests/hermes grew to 1600 passing / 11 skipped; hermes `_vendor` coverage **39% → 54%**
+(repo total 40% → 56%). Harness in `vendor/hermes/scripts/rewrite_test_imports.py` +
+`tests/hermes/conftest.py`; reconciliations/skips recorded in §5/§6 and `vendor/hermes/METADATA.yaml`.
 **Upstream pin:** `NousResearch/hermes-agent @ 5a36f76a00cc448948856a5c1b52710aafec264e` (same revision + MIT
 license as the already-vendored modules — no new licensing/provenance surface).
 **Method:** every file referenced here was fetched at the pin and its imports/patch-targets/fixtures verified

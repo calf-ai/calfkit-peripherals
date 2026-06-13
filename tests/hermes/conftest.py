@@ -20,6 +20,48 @@ from pathlib import Path
 
 import pytest
 
+# Vendored upstream tests that cannot run as-is in calfkit, each with the reason.
+# Skipping here (rather than editing the file) keeps the vendored test byte-for-byte.
+#   * gateway/run.py source: the gateway app-runtime is not vendored (only shimmed).
+#   * shim config returns {}: hermes_cli.config is a stub by design — config.yaml is
+#     deliberately not honored in the node (subprocess env hygiene is a Stage-D concern,
+#     not this config), so config-driven env_passthrough / credential mounts are dormant.
+_VENDORED_SKIPS = {
+    "test_vendored_approval.py::TestSessionKeyContext::test_gateway_runner_binds_session_key_to_context_before_agent_run":
+        "reads gateway/run.py source; the gateway app-runtime is not vendored",
+    "test_vendored_env_passthrough.py::TestConfigPassthrough::test_reads_from_config":
+        "shim hermes_cli.config returns {} by design; config.yaml env_passthrough is dormant in the node",
+    "test_vendored_env_passthrough.py::TestConfigPassthrough::test_union_of_skill_and_config":
+        "shim hermes_cli.config returns {} by design; config.yaml env_passthrough is dormant in the node",
+    "test_vendored_credential_files.py::TestConfigPathTraversal::test_config_legitimate_file_works":
+        "shim hermes_cli.config returns {} by design; config-driven credential mounts are dormant in the node",
+}
+
+# Pass on Linux CI; fail only on macOS because its tmp dir resolves through the
+# /tmp -> /private/tmp symlink and these tests assert an exact resolved path.
+_DARWIN_SKIPS = {
+    "test_vendored_file_tools.py::TestWriteFileHandler::test_writes_content":
+        "macOS /tmp->/private/tmp symlink; asserts exact resolved path (passes on Linux CI)",
+    "test_vendored_file_tools.py::TestPatchHandler::test_replace_mode_calls_patch_replace":
+        "macOS /tmp->/private/tmp symlink; asserts exact resolved path (passes on Linux CI)",
+    "test_vendored_file_tools.py::TestPatchHandler::test_replace_mode_replace_all_flag":
+        "macOS /tmp->/private/tmp symlink; asserts exact resolved path (passes on Linux CI)",
+}
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip vendored tests that depend on un-vendored runtime or platform specifics."""
+    is_darwin = sys.platform == "darwin"
+    for item in items:
+        for frag, reason in _VENDORED_SKIPS.items():
+            if frag in item.nodeid:
+                item.add_marker(pytest.mark.skip(reason=reason))
+        if is_darwin:
+            for frag, reason in _DARWIN_SKIPS.items():
+                if frag in item.nodeid:
+                    item.add_marker(pytest.mark.skip(reason=reason))
+
+
 _SRC = Path(__file__).resolve().parents[2] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
@@ -80,6 +122,7 @@ def _reset_vendored_global_state():
     """
     from calfkit_tools.hermes._vendor.agent import web_search_registry as wsr
     from calfkit_tools.hermes._vendor.tools import (
+        approval,
         file_tools,
         terminal_tool,
         tool_output_limits,
@@ -87,15 +130,24 @@ def _reset_vendored_global_state():
     )
 
     def _clear_per_task_state():
-        # Per-task caches/registries upstream got fresh per subprocess. They key on
-        # task_id, so a stale entry (e.g. a previous test's live-tracking cwd in
-        # terminal_tool._active_environments) leaks into the next test's path
-        # resolution. Clear all of them between tests.
+        # Per-test mutable module globals upstream got fresh per subprocess. They key on
+        # task_id / session_key, so a stale entry (e.g. a previous test's live-tracking
+        # cwd in terminal_tool._active_environments, or a leftover session in
+        # approval._session_yolo that makes a guard early-return) leaks into the next
+        # test. Clear all of them between tests.
         with terminal_tool._env_lock:
             terminal_tool._active_environments.clear()
             terminal_tool._task_env_overrides.clear()
         file_tools.clear_file_ops_cache()
         file_tools.reset_file_dedup()
+        with approval._lock:
+            approval._pending.clear()
+            approval._session_approved.clear()
+            approval._session_yolo.clear()
+            approval._permanent_approved.clear()
+            approval._gateway_queues.clear()
+            approval._gateway_notify_cbs.clear()
+        approval._YOLO_MODE_FROZEN = False
 
     with wsr._lock:
         snap_providers = dict(wsr._providers)

@@ -35,6 +35,17 @@ from rewrite_imports import _target, rewrite_imports
 _FIRST_ARG_FUNCS = {"patch", "setattr", "delattr", "import_module"}
 
 
+def _patch_aliases(tree):
+    """Names bound to ``unittest.mock.patch`` via ``import ... as`` (e.g. ``mock_patch``)."""
+    aliases = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module in ("unittest.mock", "mock"):
+            for a in node.names:
+                if a.name == "patch" and a.asname:
+                    aliases.add(a.asname)
+    return aliases
+
+
 def _maybe(edits, node):
     """Record (node, target) if *node* is a string literal that maps to a namespace."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -43,28 +54,41 @@ def _maybe(edits, node):
             edits.append((node, target))
 
 
+def _is_sys_modules(expr):
+    """True if *expr* is the ``sys.modules`` attribute access."""
+    return (
+        isinstance(expr, ast.Attribute)
+        and expr.attr == "modules"
+        and isinstance(expr.value, ast.Name)
+        and expr.value.id == "sys"
+    )
+
+
 def _string_target_edits(tree):
     """Collect (Constant, new_value) edits for rewritable string-literal module paths."""
     edits = []
+    first_arg_funcs = _FIRST_ARG_FUNCS | _patch_aliases(tree)
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             func = node.func
             name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
-            if name in _FIRST_ARG_FUNCS and node.args:
+            if name in first_arg_funcs and node.args:
+                _maybe(edits, node.args[0])
+            # sys.modules.get/pop/setdefault("tools.x") -- the dict-method forms the
+            # subscript branch below misses (they share the key with the subscript set).
+            elif (
+                name in ("get", "pop", "setdefault")
+                and isinstance(func, ast.Attribute)
+                and _is_sys_modules(func.value)
+                and node.args
+            ):
                 _maybe(edits, node.args[0])
             for kw in node.keywords:
                 if kw.arg == "logger":
                     _maybe(edits, kw.value)
-        elif isinstance(node, ast.Subscript):
-            val = node.value
-            if (
-                isinstance(val, ast.Attribute)
-                and val.attr == "modules"
-                and isinstance(val.value, ast.Name)
-                and val.value.id == "sys"
-            ):
-                sl = node.slice
-                _maybe(edits, sl if isinstance(sl, ast.Constant) else getattr(sl, "value", sl))
+        elif isinstance(node, ast.Subscript) and _is_sys_modules(node.value):
+            sl = node.slice
+            _maybe(edits, sl if isinstance(sl, ast.Constant) else getattr(sl, "value", sl))
     return edits
 
 
