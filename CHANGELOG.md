@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/calf-ai/calfkit-peripherals/compare/v0.1.0...v0.1.1) (2026-06-13)
+
+
+### Documentation
+
+* add known-bugs log (findings from the coverage effort) ([7f8417a](https://github.com/calf-ai/calfkit-peripherals/commit/7f8417a05fa655b91d81eff4cd45b02de5b5b833))
+
 ## 0.1.0 (2026-06-13)
 
 
