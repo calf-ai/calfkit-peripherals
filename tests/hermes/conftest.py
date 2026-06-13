@@ -79,10 +79,27 @@ def _reset_vendored_global_state():
     a local ``ToolRegistry()`` instance, as upstream does.
     """
     from calfkit_tools.hermes._vendor.agent import web_search_registry as wsr
-    from calfkit_tools.hermes._vendor.tools import tool_output_limits, url_safety
+    from calfkit_tools.hermes._vendor.tools import (
+        file_tools,
+        terminal_tool,
+        tool_output_limits,
+        url_safety,
+    )
+
+    def _clear_per_task_state():
+        # Per-task caches/registries upstream got fresh per subprocess. They key on
+        # task_id, so a stale entry (e.g. a previous test's live-tracking cwd in
+        # terminal_tool._active_environments) leaks into the next test's path
+        # resolution. Clear all of them between tests.
+        with terminal_tool._env_lock:
+            terminal_tool._active_environments.clear()
+            terminal_tool._task_env_overrides.clear()
+        file_tools.clear_file_ops_cache()
+        file_tools.reset_file_dedup()
 
     with wsr._lock:
         snap_providers = dict(wsr._providers)
+    _clear_per_task_state()
     tool_output_limits._reset_tool_output_limits_cache()
     url_safety._reset_allow_private_cache()
 
@@ -91,5 +108,6 @@ def _reset_vendored_global_state():
     finally:
         with wsr._lock:
             wsr._providers.clear(); wsr._providers.update(snap_providers)
+        _clear_per_task_state()
         tool_output_limits._reset_tool_output_limits_cache()
         url_safety._reset_allow_private_cache()
