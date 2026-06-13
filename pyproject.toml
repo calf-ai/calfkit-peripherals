@@ -61,6 +61,19 @@ Issues = "https://github.com/calf-ai/calfkit-peripherals/issues"
 # because the tests depend on it directly.
 dev = ["pytest>=8", "anyio"]
 
+[tool.hatch.build.targets.sdist]
+# Strict allowlist (only-include restricts the file walk itself): hatchling
+# only respects .gitignore — not .git/info/exclude — so anything outside this
+# list, e.g. locally-excluded working files, would otherwise leak into the sdist.
+only-include = [
+    "src/calfkit_tools",
+    "tests",
+    "vendor",
+    "THIRD_PARTY_NOTICES.md",
+    "README.md",
+    "LICENSE",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/calfkit_tools"]
 
