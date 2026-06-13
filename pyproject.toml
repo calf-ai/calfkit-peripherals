@@ -112,4 +112,12 @@ omit = [
     "*/_vendor/tools/environments/ssh.py",
     "*/_vendor/tools/environments/singularity.py",
     "*/_vendor/tools/environments/file_sync.py",
+    # Dormant in the calfkit node: reachable only via CUT features (skills), the
+    # omitted remote backends (Modal), or a fail-closed LSP shim — no supported
+    # default path exercises them. See docs/design/coverage-improvement-plan.md Part 2.
+    "*/_vendor/agent/skill_utils.py",           # served the CUT skills feature; near-live fn reached only by omitted remote backends
+    "*/_vendor/tools/managed_tool_gateway.py",  # Nous managed-gateway routing — Modal-only
+    "*/_vendor/agent/async_utils.py",           # safe_schedule_threadsafe imported only by environments/modal.py (omitted)
+    "*/_shims/agent/lsp/range_shift.py",        # dead behind the LSP shim's get_service()->None
+    "*/_shims/agent/lsp/reporter.py",           # dead behind the LSP shim's get_service()->None
 ]
