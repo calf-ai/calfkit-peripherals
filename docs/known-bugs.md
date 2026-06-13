@@ -53,7 +53,8 @@ fix shows up as a deliberate change. Fixes are tracked separately.
 - **Correction:** an earlier analysis note that `cd / && rm -rf .` is "completely unguarded" is **wrong** —
   direct execution shows `detect_dangerous_command` returns `recursive delete`. The real issue is the
   missing *hardline* classification, not a total bypass.
-- **Status:** VERIFIED (this session). Pinning test to be added in Phase C.
+- **Status:** PINNED — `tests/hermes/test_approval_behavior.py::test_BUG003_rootdelete_variants_miss_hardline_floor_under_yolo`
+  (asserts `rm -rf /` is blocked under yolo while `rm -rf //` and `cd / && rm -rf .` are approved).
 
 ---
 
@@ -96,9 +97,11 @@ fix shows up as a deliberate change. Fixes are tracked separately.
 
 ### BUG-009 — `tirith_security` fail-open/closed branch is unreachable via the real resolver
 - **Where:** `tools/tirith_security.py` `check_command_security` (`if tirith_path is None: …`).
-- **What:** `_resolve_tirith_path` returns a string on every path (never `None`), so the `tirith_path is None`
-  fail-open/closed block can only be reached by monkeypatch — dead defensive code or a latent contract mismatch.
-- **Status:** FLAGGED (analysis). To confirm in Phase C.
+- **What:** `_resolve_tirith_path` returns a string on every path (`expanded`/`found`/`hermes_bin`/`installed`),
+  never `None`, so the `tirith_path is None` fail-open/closed block is **dead defensive code** — unreachable via
+  the real resolver, only via monkeypatch.
+- **Status:** CONFIRMED — `tests/hermes/test_tirith_security_behavior.py::TestBug009PathNoneBranch` (asserts the
+  real resolver never returns `None`, and covers the dead branch via a patched resolver).
 
 ---
 
@@ -170,4 +173,6 @@ fix shows up as a deliberate change. Fixes are tracked separately.
 - **Where:** `tools/terminal_tool.py` `terminal_tool` (`"timeout" in str(e).lower()` classifies a 124 timeout).
 - **What:** Any exception whose message merely contains "timeout" (e.g. a library "read timeout") is
   classified as a command timeout (exit 124). Brittle vs `isinstance(e, subprocess.TimeoutExpired)`.
-- **Status:** FLAGGED (analysis). To confirm/pin in Phase C.
+- **Status:** PINNED — `tests/hermes/test_terminal_tool_behavior.py::TestForegroundTimeoutBug019` (a
+  `RuntimeError("connection read timeout")` is misclassified as a 124 timeout; a real `TimeoutError` with no
+  "timeout" substring is missed).

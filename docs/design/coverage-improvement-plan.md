@@ -144,8 +144,8 @@ fix decision. Ranked by severity.
 | Today | **70%** (orange) |
 | + dormant omits (Part 2) | **~74-76%** |
 | + Phase A | **76%** (done) |
-| + Phase B | **78%** (done — code_execution remote path still partial) |
-| + Phase C (local surface) | **~83-86%** (not started) |
+| + Phase B | **78%** (done) |
+| + Phase C | **81%** (done — approval 77→87, tirith 76→90, code_execution 66→78, terminal_tool 58→63) |
 
 The ceiling on the supported surface is high-80s: the residual is genuinely-dormant remote-backend code in
 `terminal_tool`/`code_execution` and the off-by-design LSP/URL-redaction code, which we correctly do not chase.
