@@ -18,7 +18,7 @@ through its engine callable. No reaching into vendor internals.
 - Multitenancy per ADR-0004: `session_key = f"{ctx.agent_name}:{deps.get('session_id', 'default')}"`,
   fed to hermes as its `task_id`.
 - All state in-memory; durable Stores deferred (owner decision).
-- `calfkit>=0.9.0,<0.10` becomes a **core dependency** of each component.
+- `calfkit>=0.9.0,<0.11` becomes a **core dependency** of each component.
 - Stateful nodes are correct at one process per node (see ADR-0004 consequence).
 
 ## 2. Node inventory (11 nodes)

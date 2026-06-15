@@ -22,11 +22,11 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
         # Verify both ends of the supported calfkit range (pyproject: >=0.9.0,<0.11):
-        # the floor (0.9.x) and the ceiling (0.10.x). The node glue uses only
-        # ToolContext / agent_tool / ToolNodeDef, which are identical across both, so a
-        # green floor leg is what makes the dual-version support claim honest. Bump these
-        # representatives when the floor/ceiling we support changes.
-        calfkit: ["0.9.1", "0.10.0"]
+        # the declared floor (0.9.0, the constraint's exact lower bound) and the current
+        # ceiling (0.10.0). The node glue uses only ToolContext / agent_tool / ToolNodeDef,
+        # which are identical across both, so a green floor leg is what makes the
+        # dual-version support claim honest. Bump these when the floor/ceiling changes.
+        calfkit: ["0.9.0", "0.10.0"]
 
     # python-coverage-comment-action needs ``contents: write`` to commit the
     # badge + coverage data to its data branch
@@ -52,6 +52,9 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+          # All legs share an identical uv.lock + pyproject, so without a per-leg suffix
+          # they collide on one cache key (non-fatal 409 on save). Suffix per leg.
+          cache-suffix: py${{ matrix.python-version }}-calfkit${{ matrix.calfkit }}
 
       - name: Install dependencies
         # uv.lock pins the ceiling (0.10.0); override to the matrix-selected calfkit so each
@@ -63,6 +66,10 @@ jobs:
         run: |
           uv sync --group dev
           uv pip install "calfkit==${CALFKIT_VERSION}"
+          # Fail loudly if the pin did not take, rather than silently testing the wrong version.
+          installed="$(uv run --no-sync python -c 'import importlib.metadata as m; print(m.version("calfkit"))')"
+          echo "calfkit pinned to ${installed} (expected ${CALFKIT_VERSION})"
+          test "${installed}" = "${CALFKIT_VERSION}"
 
       - name: Run tests
         # Coverage is collected on exactly ONE leg (3.11 × ceiling) so there is a single
