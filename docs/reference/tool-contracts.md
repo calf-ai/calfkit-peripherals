@@ -11,7 +11,7 @@ roll-up index.
 
 ## Common contract (all nodes)
 
-- **Type:** calfkit `ToolNodeDef` (calfkit `>=0.9.0,<0.10`), one node per tool.
+- **Type:** calfkit `ToolNodeDef` (calfkit `>=0.9.0,<0.11`), one node per tool.
 - **Identity:** node id `tool_<name>`; topics `tool.<name>.input` /
   `tool.<name>.output` (calfkit name-derived).
 - **Envelope:** JSON. Arguments are validated against the schema derived from
