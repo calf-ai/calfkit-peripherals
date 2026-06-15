@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "calfkit-tools"
-version = "0.1.0"
+version = "0.1.1"
 description = "Vendored agent tools for the calfkit SDK: hermes shell/files/web/todo and an SSRF-safe web_fetch, each deployable as a calfkit tool node."
 readme = "README.md"
 requires-python = ">=3.11"
