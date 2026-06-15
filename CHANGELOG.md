@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.1](https://github.com/calf-ai/calfkit-peripherals/compare/v0.1.0...v0.1.1) (2026-06-15)
+
+
+### Features
+
+* support calfkit 0.10.0, widen to &gt;=0.9.0,&lt;0.11 ([#8](https://github.com/calf-ai/calfkit-peripherals/issues/8)) ([d5a1755](https://github.com/calf-ai/calfkit-peripherals/commit/d5a17556c0d0661e159fbc53a2396e6a4bd6c983))
+
+
+### Documentation
+
+* add known-bugs log (findings from the coverage effort) ([7f8417a](https://github.com/calf-ai/calfkit-peripherals/commit/7f8417a05fa655b91d81eff4cd45b02de5b5b833))
+
 ## 0.1.0 (2026-06-13)
 
 
