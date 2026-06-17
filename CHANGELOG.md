@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.2](https://github.com/calf-ai/calfkit-peripherals/compare/v0.1.1...v0.1.2) (2026-06-17)
+
+
+### Features
+
+* support Python 3.10-3.14 and unify CI workflows ([#10](https://github.com/calf-ai/calfkit-peripherals/issues/10)) ([7e1868f](https://github.com/calf-ai/calfkit-peripherals/commit/7e1868fde0760925691e94f4c8ba237427b877e1))
+* vendor-free calfkit_tools.tools public API and consumer-first README ([#11](https://github.com/calf-ai/calfkit-peripherals/issues/11)) ([6a66096](https://github.com/calf-ai/calfkit-peripherals/commit/6a66096856147d61db9a3d760e2a6636f4a2c180))
+
+
+### Documentation
+
+* add PyPI version badge to README ([b938017](https://github.com/calf-ai/calfkit-peripherals/commit/b93801778fd1ae2b894373ca92222cb7fe5281be))
+
 ## [0.1.1](https://github.com/calf-ai/calfkit-peripherals/compare/v0.1.0...v0.1.1) (2026-06-15)
 
 
