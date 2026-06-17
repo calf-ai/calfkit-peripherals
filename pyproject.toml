@@ -7,7 +7,7 @@ name = "calfkit-tools"
 version = "0.1.1"
 description = "Vendored agent tools for the calfkit SDK: hermes shell/files/web/todo and an SSRF-safe web_fetch, each deployable as a calfkit tool node."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 # First-party glue (node wrappers, package scaffolding) is Apache-2.0 (repo LICENSE);
 # the vendored upstream trees under src/calfkit_tools/*/_vendor are MIT. The bundled
 # notices for every source travel in the distribution via license-files (below).
@@ -24,8 +24,11 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
@@ -67,7 +70,7 @@ Issues = "https://github.com/calf-ai/calfkit-peripherals/issues"
 # prompt_toolkit is test-only: the vendored approval module's "fail closed when an
 # interactive prompt_toolkit session is active" guard is dormant in the (non-interactive)
 # node, but its security tests import prompt_toolkit to exercise that path.
-dev = ["pytest>=8", "pytest-cov", "anyio", "prompt_toolkit"]
+dev = ["pytest>=8", "pytest-cov", "anyio", "prompt_toolkit", "ruff>=0.14.11", "mypy>=1.19.1"]
 
 [tool.hatch.build.targets.sdist]
 # Strict allowlist (only-include restricts the file walk itself): hatchling
@@ -84,6 +87,47 @@ only-include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/calfkit_tools"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 150
+# Lint/format only first-party glue (node wrappers + package scaffolding). Code
+# derived from upstream is kept verbatim (vendor-over-handroll) and is not ours
+# to restyle: ``**/_vendor`` (vendored in-tree sources), ``**/_shims`` (the
+# compat layer that mirrors upstream symbols and embeds verbatim-copied upstream
+# snippets), ``vendor`` (provenance-only files), and the vendored test suites
+# under ``tests`` (hermes' whole suite + web_fetch's two regression files).
+# ``extend-exclude`` keeps ruff's built-in excludes (.venv, build, …).
+extend-exclude = [
+    "**/_vendor",
+    "**/_shims",
+    "vendor",
+    "tests/hermes",
+    "tests/web_fetch/test_ssrf.py",
+    "tests/web_fetch/test_web_fetch.py",
+]
+
+[tool.ruff.lint]
+# Mirrors the calfkit-sdk rule set: pycodestyle (E/W), pyflakes (F), isort (I),
+# pep8-naming (N), pyupgrade (UP).
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+# Type-check first-party glue only. Unlike the calfkit-sdk (a greenfield, fully
+# typed library that runs ``strict``), this package's glue bridges *untyped*
+# vendored and third-party code: ``strict`` there is dominated by noise from
+# calfkit's own untyped ``@agent_tool`` decorator and missing upstream stubs
+# rather than real defects, so we run the (non-strict) default — it stays green
+# while still catching genuine type errors in the glue.
+python_version = "3.10"
+files = ["src/calfkit_tools"]
+# ``exclude`` is a regex (not a glob): skip the vendored sources and the
+# upstream-mirroring shim layer at any depth (see the ruff note above).
+exclude = ['(^|/)(_vendor|_shims)/']
+# The glue imports vendored/untyped modules; don't surface their type issues
+# (follow them silently) or complain about third-party packages without stubs.
+follow_imports = "silent"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

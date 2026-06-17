@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-__all__ = ['FetchedBinary', 'WebFetchError']
+__all__ = ["FetchedBinary", "WebFetchError"]
 
 
 class WebFetchError(Exception):
@@ -33,5 +33,5 @@ class FetchedBinary:
     data: bytes
     """The raw response body."""
 
-    media_type: str = 'application/octet-stream'
+    media_type: str = "application/octet-stream"
     """The response media type (e.g. ``application/pdf``); defaults to ``application/octet-stream``."""
