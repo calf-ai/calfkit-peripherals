@@ -1,0 +1,51 @@
+name: "Setup Python and uv"
+description: >-
+  Set up Python and uv (with caching), then optionally sync uv dependency
+  groups. Assumes the repository is already checked out (a local composite
+  action cannot run before checkout).
+
+inputs:
+  python-version:
+    description: "Python version to install."
+    required: false
+    default: "3.12"
+  groups:
+    description: >-
+      Space-separated uv dependency groups to sync (e.g. "dev"). An empty string
+      skips the sync (e.g. for `uv build`, which needs no synced venv).
+    required: false
+    default: "dev"
+  cache-suffix:
+    description: >-
+      Optional suffix appended to the uv cache key. Matrix legs that share an
+      identical uv.lock + pyproject but differ in a post-sync pin (this repo
+      pins the calfkit version per leg) otherwise collide on a single cache key
+      (a non-fatal 409 on save); pass a per-leg suffix to disambiguate them.
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        cache-suffix: ${{ inputs.cache-suffix }}
+
+    - name: Sync dependencies
+      if: ${{ inputs.groups != '' }}
+      shell: bash
+      env:
+        GROUPS: ${{ inputs.groups }}
+      run: |
+        args=()
+        for group in $GROUPS; do
+          args+=(--group "$group")
+        done
+        uv sync "${args[@]}"

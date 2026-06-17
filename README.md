@@ -1,8 +1,8 @@
 # 🐮 calfkit-tools
 
 [![PyPI version](https://img.shields.io/pypi/v/calfkit-tools.svg)](https://pypi.org/project/calfkit-tools/)
-[![Python versions](https://img.shields.io/pypi/pyversions/calfkit-tools.svg)](https://pypi.org/project/calfkit-tools/)
-[![Tests](https://github.com/calf-ai/calfkit-peripherals/actions/workflows/test.yml/badge.svg)](https://github.com/calf-ai/calfkit-peripherals/actions/workflows/test.yml)
+[![Python versions](https://img.shields.io/pypi/pyversions/calfkit-tools)](https://pypi.org/project/calfkit-tools/)
+[![CI](https://github.com/calf-ai/calfkit-peripherals/actions/workflows/ci.yml/badge.svg)](https://github.com/calf-ai/calfkit-peripherals/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/calf-ai/calfkit-peripherals/python-coverage-comment-action-data/endpoint.json)](https://github.com/calf-ai/calfkit-peripherals/tree/python-coverage-comment-action-data)
 [![License: Apache-2.0 AND MIT](https://img.shields.io/badge/License-Apache--2.0%20AND%20MIT-blue.svg)](https://github.com/calf-ai/calfkit-peripherals/blob/main/LICENSE)
 
@@ -35,7 +35,7 @@ ready-made toolbox of eleven tools. Every tool is a calfkit `ToolNodeDef` — a 
 pip install calfkit-tools          # or: uv add calfkit-tools
 ```
 
-Requires Python 3.11+. Installing `calfkit-tools` also pulls in the `calfkit` SDK and its
+Requires Python 3.10+. Installing `calfkit-tools` also pulls in the `calfkit` SDK and its
 `calfkit run` CLI. The base install runs every tool with its default backend (shell and code
 execution run locally).
 

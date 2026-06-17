@@ -16,7 +16,7 @@ from calfkit import agent_tool
 from calfkit_tools.web_fetch._vendor.common_tools.web_fetch import WebFetchLocalTool
 from calfkit_tools.web_fetch.results import FetchedBinary
 
-__all__ = ['web_fetch']
+__all__ = ["web_fetch"]
 
 # One stateless engine for the node's lifetime. The SSRF guard's arguments are fixed at safe
 # defaults (§7): no private/local URLs, a 30s timeout, and a 50k-char content cap. Domain
@@ -50,8 +50,8 @@ async def web_fetch(url: str) -> dict:
 
     if isinstance(result, FetchedBinary):
         return {
-            'data_base64': base64.b64encode(result.data).decode('ascii'),
-            'media_type': result.media_type,
+            "data_base64": base64.b64encode(result.data).decode("ascii"),
+            "media_type": result.media_type,
         }
 
     # `WebFetchResult` is a TypedDict (a plain dict at runtime) — already JSON-serializable.

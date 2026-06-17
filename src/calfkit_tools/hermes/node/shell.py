@@ -26,9 +26,7 @@ from calfkit_tools.hermes.node._runtime import dispatch, session_key
 # included alongside ``write``: both push raw bytes to the process stdin, so
 # leaving submit unguarded would reopen the very cross-tenant control hole this
 # guard closes (the reviewer's enumerated set omitted it; see NODE.md).
-_HANDLE_ACTIONS = frozenset(
-    {"poll", "log", "wait", "kill", "write", "submit", "close"}
-)
+_HANDLE_ACTIONS = frozenset({"poll", "log", "wait", "kill", "write", "submit", "close"})
 
 
 @agent_tool
@@ -138,10 +136,7 @@ def process(
     # (deny-as-not-found — never leak that the handle exists for someone else).
     if action in _HANDLE_ACTIONS and session_id is not None:
         listing = dispatch("process", {"action": "list"}, session_key=key)
-        owned = {
-            p.get("session_id")
-            for p in (listing.get("processes", []) if isinstance(listing, dict) else [])
-        }
+        owned = {p.get("session_id") for p in (listing.get("processes", []) if isinstance(listing, dict) else [])}
         if str(session_id) not in {str(s) for s in owned if s is not None}:
             return {
                 "status": "not_found",

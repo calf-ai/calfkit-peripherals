@@ -21,7 +21,6 @@ detail and never appears in this surface.
 from __future__ import annotations
 
 import importlib
-from typing import TYPE_CHECKING
 
 # Public tool name -> the internal module that defines it. The source-subpackage
 # layout is an implementation detail; consumers import everything from here.
@@ -42,25 +41,10 @@ _EXPORTS: dict[str, str] = {
 
 __all__ = [*sorted(_EXPORTS), "ALL_TOOLS"]
 
-
-if TYPE_CHECKING:
-    # Static re-exports so type checkers and IDEs resolve the lazy names below.
-    from calfkit_tools.hermes.node import (
-        InMemoryTodoStore as InMemoryTodoStore,
-        execute_code as execute_code,
-        patch as patch,
-        process as process,
-        read_file as read_file,
-        search_files as search_files,
-        terminal as terminal,
-        todo as todo,
-        web_extract as web_extract,
-        web_search as web_search,
-        write_file as write_file,
-    )
-    from calfkit_tools.web_fetch.node import web_fetch as web_fetch
-
-    ALL_TOOLS: list
+# Served lazily by ``__getattr__`` below. Declared (annotation only, never bound)
+# so it is a defined name for ``__all__`` and type checkers without eagerly
+# building the bundle on import.
+ALL_TOOLS: list
 
 
 def _load_all_tools() -> list:

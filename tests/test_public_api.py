@@ -39,8 +39,8 @@ def test_every_tool_importable_from_tools_namespace(name):
 
 
 def test_reexport_is_the_same_object_as_the_source():
-    from calfkit_tools.tools import terminal, web_fetch
     from calfkit_tools.hermes.node import terminal as hermes_terminal
+    from calfkit_tools.tools import terminal, web_fetch
     from calfkit_tools.web_fetch.node import web_fetch as wf
 
     assert terminal is hermes_terminal
@@ -48,15 +48,15 @@ def test_reexport_is_the_same_object_as_the_source():
 
 
 def test_in_memory_todo_store_reexported():
+    from calfkit_tools.hermes.node import InMemoryTodoStore as SourceStore
     from calfkit_tools.tools import InMemoryTodoStore
-    from calfkit_tools.hermes.node import InMemoryTodoStore as source
 
-    assert InMemoryTodoStore is source
+    assert InMemoryTodoStore is SourceStore
 
 
 def test_all_tools_bundle_is_every_node():
-    from calfkit_tools.tools import ALL_TOOLS
     from calfkit_tools.hermes.node import HERMES_NODES
+    from calfkit_tools.tools import ALL_TOOLS
     from calfkit_tools.web_fetch.node import web_fetch
 
     assert len(ALL_TOOLS) == 11
@@ -87,8 +87,6 @@ def test_importing_top_level_package_is_side_effect_free():
         "assert 'calfkit_tools.hermes.node' in sys.modules, 'lazy import did not fire';"
         "print('ok')"
     )
-    result = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True
-    )
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "ok"

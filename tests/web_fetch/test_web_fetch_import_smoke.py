@@ -22,9 +22,7 @@ def test_all_web_fetch_modules_import():
             importlib.import_module(mod)
         except Exception as e:  # noqa: BLE001
             failures[mod] = f"{type(e).__name__}: {e}"
-    assert not failures, "modules failed to import:\n" + "\n".join(
-        f"  {m}: {e}" for m, e in failures.items()
-    )
+    assert not failures, "modules failed to import:\n" + "\n".join(f"  {m}: {e}" for m, e in failures.items())
 
 
 def test_no_pydantic_ai_imports_survive():
