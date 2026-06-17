@@ -76,6 +76,10 @@ tests/<source>/                    # vendored upstream tests (regression) + your
   extra in `[project.optional-dependencies]` (e.g. `shell-docker = ["docker"]`), and roll up
   into the `all` extra. Keep the top-level `calfkit_tools` package side-effect-free — no eager
   tool imports — so importing the distribution pulls in no optional deps.
+- **Public API:** tools are re-exported from the lazy `calfkit_tools.tools` namespace (PEP 562),
+  so consumers import them vendor-free as `from calfkit_tools.tools import <tool>`. The
+  source-subpackage layout is an internal detail and must not appear in the public import
+  surface (see [`adr/0007-flat-public-api-reexport.md`](adr/0007-flat-public-api-reexport.md)).
 
 ## How to add a new source
 
@@ -97,7 +101,10 @@ tests/<source>/                    # vendored upstream tests (regression) + your
    `[project.dependencies]`, optional backends under `[project.optional-dependencies]`).
 7. **Write the node adapter** (`node/`) **test-first**, mapping the tool(s) onto the calfkit
    Kafka contract (`vendor/<source>/NODE.md`).
-8. **Gate:** the vendored core tests + an adapter smoke test must pass.
+8. **Re-export the public API.** Add each tool (and any resource it binds) to `_EXPORTS` in
+   `src/calfkit_tools/tools.py`, and its nodes to the `ALL_TOOLS` bundle, so users import it
+   vendor-free as `from calfkit_tools.tools import <tool>`. Pin it in `tests/test_public_api.py`.
+9. **Gate:** the vendored core tests + an adapter smoke test must pass.
 
 See [`design/shell-file-tool-port.md`](design/shell-file-tool-port.md) for a worked
 example (the hermes-agent port) — including the security and multi-tenancy concerns a

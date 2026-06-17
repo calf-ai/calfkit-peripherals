@@ -48,12 +48,17 @@ The repo is **one distribution** organized internally by upstream source. To add
    - Tool nodes live under `<source>/node/` (one calfkit `ToolNodeDef` per tool).
    - Import-rewritten upstream code lives under `<source>/_vendor/`; thin compatibility
      shims under `<source>/_shims/`.
-2. **Provenance** → `vendor/<source>/` — copy [`vendor/_template/`](vendor/_template) to start.
+2. **Public API** → re-export each new tool from `calfkit_tools.tools` so users import it
+   vendor-free as `from calfkit_tools.tools import <tool>`. Add the tool (and any resource it
+   binds) to `_EXPORTS` in [`src/calfkit_tools/tools.py`](src/calfkit_tools/tools.py), and add
+   its nodes to the `ALL_TOOLS` bundle in `_load_all_tools`. The source-subpackage layout stays
+   an internal detail — it must not appear in the public import surface.
+3. **Provenance** → `vendor/<source>/` — copy [`vendor/_template/`](vendor/_template) to start.
    Holds `LICENSE`, `METADATA.yaml`, `NODE.md`, and any `patches/`. This tree is provenance
    only: it is never on `sys.path` and never in the wheel.
-3. **Tests** → `tests/<source>/`.
-4. **Dependencies / extras** → the root [`pyproject.toml`](pyproject.toml).
-5. **Attribution** → update [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+4. **Tests** → `tests/<source>/` (plus the package-root API test in `tests/test_public_api.py`).
+5. **Dependencies / extras** → the root [`pyproject.toml`](pyproject.toml).
+6. **Attribution** → update [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 See [`docs/project-structure.md`](docs/project-structure.md) for the full walkthrough.
 
