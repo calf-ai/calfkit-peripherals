@@ -17,10 +17,9 @@ inputs:
     default: "dev"
   cache-suffix:
     description: >-
-      Optional suffix appended to the uv cache key. Matrix legs that share an
-      identical uv.lock + pyproject but differ in a post-sync pin (this repo
-      pins the calfkit version per leg) otherwise collide on a single cache key
-      (a non-fatal 409 on save); pass a per-leg suffix to disambiguate them.
+      Optional suffix appended to the uv cache key. Use it to disambiguate matrix
+      legs that share an identical uv.lock + pyproject but differ in a post-sync
+      step, so they don't collide on a single cache key (a non-fatal 409 on save).
     required: false
     default: ""
 

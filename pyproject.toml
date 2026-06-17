@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "calfkit-tools"
 version = "0.1.1"
-description = "Vendored agent tools for the calfkit SDK: hermes shell/files/web/todo and an SSRF-safe web_fetch, each deployable as a calfkit tool node."
+description = "Agent tools for the calfkit SDK: shell, files, code execution, web search/fetch, and todo, each deployable as a calfkit tool node."
 readme = "README.md"
 requires-python = ">=3.10"
 # First-party glue (node wrappers, package scaffolding) is Apache-2.0 (repo LICENSE);
@@ -35,7 +35,7 @@ dependencies = [
     # Pre-1.0 upstream: per SemVer a 0.x minor bump may break, so cap at the next
     # *unreleased* minor rather than leaving the ceiling open. The node glue uses only
     # ToolContext / agent_tool / ToolNodeDef, which are identical across 0.9.x and 0.10.x,
-    # so both are supported (CI tests floor + ceiling). Bump the ceiling only after
+    # so both are supported (CI exercises the locked ceiling only). Bump the ceiling only after
     # verifying the surface against the next minor; relax to >=1,<2 once calfkit hits 1.0.
     "calfkit>=0.9.0,<0.11",
     "pydantic",                            # node/files.py, node/shell.py import at module top
