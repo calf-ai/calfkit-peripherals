@@ -36,9 +36,7 @@ from calfkit_tools.hermes.node._runtime import dispatch, session_key
 # hermes tool minus ``execute_code`` itself (a script can't recursively spawn
 # the sandbox). Upstream intersects this with SANDBOX_ALLOWED_TOOLS, so the
 # non-sandboxable members (``process``, ``todo``) simply never generate a stub.
-_DEFAULT_ENABLED_TOOLS = frozenset(
-    {"terminal", "process", "read_file", "write_file", "patch", "search_files", "todo"}
-)
+_DEFAULT_ENABLED_TOOLS = frozenset({"terminal", "process", "read_file", "write_file", "patch", "search_files", "todo"})
 
 _ENABLED_TOOLS_ENV = "EXECUTE_CODE_ENABLED_TOOLS"
 

@@ -48,9 +48,7 @@ def read_file(
 
 
 @agent_tool
-def write_file(
-    ctx: ToolContext, path: str, content: str, cross_profile: bool = False
-) -> dict:
+def write_file(ctx: ToolContext, path: str, content: str, cross_profile: bool = False) -> dict:
     """Write content to a file, completely replacing existing content.
 
     Use this instead of echo/cat heredoc in terminal. Creates parent directories
