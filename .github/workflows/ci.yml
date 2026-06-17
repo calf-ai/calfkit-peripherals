@@ -2,7 +2,7 @@ name: CI
 
 # Unified CI lane for the always-on checks that share the push-to-main / PR
 # trigger and need no special infrastructure: lint + type-check, the test matrix
-# (Python 3.10-3.14 x the supported calfkit floor/ceiling), and a package build
+# (Python 3.10-3.14 against the locked calfkit version), and a package build
 # + cross-OS install verification. Lanes with divergent triggers stay in their
 # own files: the fork/Dependabot coverage handoff (coverage.yml, workflow_run),
 # release (release.yml, push -> PyPI), and pr-title (pull_request_target).
@@ -44,25 +44,18 @@ jobs:
         run: uv run mypy
 
   test:
-    name: py${{ matrix.python-version }} · calfkit ${{ matrix.calfkit }}
+    name: py${{ matrix.python-version }}
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        # Every supported Python (3.10-3.14) runs against the calfkit ceiling
-        # (0.10.0, what uv.lock pins). The calfkit floor/ceiling difference is in
-        # the SDK surface and does not interact with the Python version — the node
-        # glue uses only ToolContext / agent_tool / ToolNodeDef, identical across
-        # 0.9.x and 0.10.x — so a single extra `include` leg exercises the floor
-        # (0.9.0, the constraint's exact lower bound) instead of a full 5x2 grid.
-        # That floor leg is what keeps the dual-version support claim honest. Bump
-        # these when the supported Python range or the calfkit floor/ceiling moves.
+        # Every supported Python (3.10-3.14) runs against the locked calfkit
+        # version (the ceiling 0.10.0, pinned in uv.lock). calfkit is not varied
+        # across the matrix — the node glue uses only the stable SDK surface
+        # (ToolContext / agent_tool / ToolNodeDef). Bump this list when the
+        # supported Python range moves.
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-        calfkit: ["0.10.0"]
-        include:
-          - python-version: "3.11"
-            calfkit: "0.9.0"
 
     # python-coverage-comment-action needs ``contents: write`` to commit the
     # badge + coverage data to its data branch
@@ -83,35 +76,15 @@ jobs:
         uses: ./.github/actions/setup
         with:
           python-version: ${{ matrix.python-version }}
-          # Disambiguate the cache per leg: all legs share one uv.lock + pyproject
-          # but pin a different calfkit below, so they would otherwise collide on a
-          # single cache key (non-fatal 409 on save).
-          cache-suffix: py${{ matrix.python-version }}-calfkit${{ matrix.calfkit }}
-
-      - name: Pin calfkit ${{ matrix.calfkit }}
-        # uv.lock pins the ceiling (0.10.0); override to the matrix-selected calfkit
-        # so each leg exercises a real point in the supported range. The test step
-        # uses --no-sync so this pin survives. (matrix.calfkit is a workflow-defined
-        # constant, not user input, but it is passed via env per Actions
-        # injection-safety best practice.)
-        env:
-          CALFKIT_VERSION: ${{ matrix.calfkit }}
-        run: |
-          uv pip install "calfkit==${CALFKIT_VERSION}"
-          # Fail loudly if the pin did not take, rather than silently testing the wrong version.
-          installed="$(uv run --no-sync python -c 'import importlib.metadata as m; print(m.version("calfkit"))')"
-          echo "calfkit pinned to ${installed} (expected ${CALFKIT_VERSION})"
-          test "${installed}" = "${CALFKIT_VERSION}"
 
       - name: Run tests
-        # Coverage is collected on exactly ONE leg (3.10 × ceiling) so there is a
-        # single .coverage file for the comment action below; every other leg runs
-        # plain pytest. --no-sync preserves the calfkit version pinned above.
+        # Coverage is collected on exactly ONE leg (py3.10) so there is a single
+        # .coverage file for the comment action below; every other leg runs plain
+        # pytest. --no-sync preserves the synced (locked) environment.
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
-          CALFKIT_VERSION: ${{ matrix.calfkit }}
         run: |
-          if [ "${PYTHON_VERSION}" = "3.10" ] && [ "${CALFKIT_VERSION}" = "0.10.0" ]; then
+          if [ "${PYTHON_VERSION}" = "3.10" ]; then
             uv run --no-sync pytest tests/ -v --tb=short --cov --cov-report=term-missing
           else
             uv run --no-sync pytest tests/ -v --tb=short
@@ -121,7 +94,7 @@ jobs:
         id: coverage_comment
         # Must match the single coverage-collecting leg above, or the action races (it
         # commits to a data branch + posts one PR comment).
-        if: matrix.python-version == '3.10' && matrix.calfkit == '0.10.0'
+        if: matrix.python-version == '3.10'
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
