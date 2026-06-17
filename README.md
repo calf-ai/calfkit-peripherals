@@ -58,10 +58,11 @@
 | src/calfkit\_tools/hermes/node/shell.py                                |       18 |        0 |        4 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/node/todo.py                                 |       38 |        0 |        2 |        0 |    100% |           |
 | src/calfkit\_tools/hermes/node/web.py                                  |       56 |        5 |       16 |        1 |     92% |59-60, 74-75, 127 |
+| src/calfkit\_tools/tools.py                                            |       18 |        0 |        4 |        0 |    100% |           |
 | src/calfkit\_tools/web\_fetch/\_vendor/\_ssrf.py                       |      207 |        3 |       70 |        0 |     99% |38, 370-371 |
 | src/calfkit\_tools/web\_fetch/\_vendor/common\_tools/web\_fetch.py     |       72 |        0 |       12 |        0 |    100% |           |
 | src/calfkit\_tools/web\_fetch/results.py                               |       10 |        0 |        0 |        0 |    100% |           |
-| **TOTAL**                                                              | **9520** | **1664** | **3314** |  **361** | **81%** |           |
+| **TOTAL**                                                              | **9538** | **1664** | **3318** |  **361** | **81%** |           |
 
 
 ## Setup coverage badge
