@@ -71,7 +71,7 @@ re-export is **lazy (PEP 562)** and the top-level package stays side-effect free
 - The public surface is pinned by `tests/test_public_api.py`: name presence,
   identity against the source object, the `ALL_TOOLS` bundle, and the
   side-effect-free invariant (asserted in a fresh interpreter).
-- `calfkit run` targets the namespace directly: `calfkit run
+- `ck run` targets the namespace directly: `ck run
   calfkit_tools.tools:terminal` or `…:ALL_TOOLS` (the loader's `getattr`
   triggers the lazy `__getattr__`).
 - Adding a source gains one step — register the tool in `_EXPORTS` and add its

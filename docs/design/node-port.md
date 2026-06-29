@@ -133,7 +133,7 @@ components/pydantic-web-fetch/src/calfkit_pydantic_web_fetch/node/
 ```
 
 Usage: `from calfkit_hermes.node import terminal` → `Worker(client, nodes=[terminal])`
-or `calfkit run calfkit_hermes.node:terminal`. `HERMES_NODES` is a convenience
+or `ck run calfkit_hermes.node:terminal`. `HERMES_NODES` is a convenience
 list for hosting all hermes nodes in one Worker — still one node per tool
 (separate topics/identities), not a proxy.
 

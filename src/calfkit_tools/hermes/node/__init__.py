@@ -1,7 +1,7 @@
 """calfkit tool nodes for the hermes-agent vendor — one deployable node per tool.
 
 Each export is a calfkit ``ToolNodeDef`` (Stage D, docs/design/node-port.md):
-import it, hand it to a ``Worker`` (or ``calfkit run calfkit_tools.hermes.node:terminal``),
+import it, hand it to a ``Worker`` (or ``ck run calfkit_tools.hermes.node:terminal``),
 and it serves its tool over the Kafka mesh on name-derived topics
 (``tool.<name>.input`` / ``tool.<name>.output``).
 

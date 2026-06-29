@@ -15,7 +15,7 @@ client = Client.connect("localhost:9092")          # or env CALFKIT_MESH_URL
 await Worker(client, nodes=[terminal]).run()       # one tool = one node
 # or host them all in one Worker (still one node per tool, not a proxy):
 await Worker(client, nodes=HERMES_NODES).run()
-# or: calfkit run calfkit_tools.hermes.node:terminal
+# or: ck run calfkit_tools.hermes.node:terminal
 ```
 
 Topics are calfkit name-derived: `tool.<name>.input` / `tool.<name>.output`,

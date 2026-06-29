@@ -88,5 +88,5 @@ from calfkit import Client, Worker
 from calfkit_tools.web_fetch.node import web_fetch
 
 await Worker(Client.connect("localhost:9092"), nodes=[web_fetch]).run()
-# or: calfkit run calfkit_tools.web_fetch.node:web_fetch
+# or: ck run calfkit_tools.web_fetch.node:web_fetch
 ```

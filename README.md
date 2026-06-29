@@ -35,7 +35,7 @@ pip install calfkit-tools          # or: uv add calfkit-tools
 ```
 
 Requires Python 3.10+. Installing `calfkit-tools` also pulls in the `calfkit` SDK and its
-`calfkit run` CLI. The base install runs every tool with its default backend (shell and code
+`ck run` CLI. The base install runs every tool with its default backend (shell and code
 execution run locally).
 
 Optional extras add **remote shell-execution backends** for the `terminal`, `process`, and
@@ -52,10 +52,10 @@ pip install "calfkit-tools[all]"             # all three
 
 Each tool is a calfkit node, so running one needs a reachable **Kafka broker** (defaults to
 `localhost`; point elsewhere with `--host` / `-H` or the `$CALFKIT_MESH_URL` env var). Serve a tool
-on the mesh with the `calfkit run` dev command:
+on the mesh with the `ck run` dev command:
 
 ```bash
-calfkit run calfkit_tools.tools:terminal
+ck run calfkit_tools.tools:terminal
 ```
 
 The node consumes `tool.terminal.input` and replies on `tool.terminal.output` — any calfkit
@@ -63,7 +63,7 @@ agent on the mesh can now call `terminal`. Host every tool in one worker with th
 bundle:
 
 ```bash
-calfkit run calfkit_tools.tools:ALL_TOOLS   # all eleven tools in one worker
+ck run calfkit_tools.tools:ALL_TOOLS   # all eleven tools in one worker
 ```
 
 To host tools programmatically, add the imported nodes to a calfkit `Worker` (constructed with a
