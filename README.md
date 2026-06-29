@@ -2,7 +2,6 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/calfkit-tools.svg)](https://pypi.org/project/calfkit-tools/)
 [![Python versions](https://img.shields.io/pypi/pyversions/calfkit-tools)](https://pypi.org/project/calfkit-tools/)
-[![CI](https://github.com/calf-ai/calfkit-peripherals/actions/workflows/ci.yml/badge.svg)](https://github.com/calf-ai/calfkit-peripherals/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/calf-ai/calfkit-peripherals/python-coverage-comment-action-data/endpoint.json)](https://github.com/calf-ai/calfkit-peripherals/tree/python-coverage-comment-action-data)
 [![License: Apache-2.0 AND MIT](https://img.shields.io/badge/License-Apache--2.0%20AND%20MIT-blue.svg)](https://github.com/calf-ai/calfkit-peripherals/blob/main/LICENSE)
 
