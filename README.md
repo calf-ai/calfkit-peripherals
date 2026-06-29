@@ -51,7 +51,7 @@ pip install "calfkit-tools[all]"             # all three
 ## Quickstart
 
 Each tool is a calfkit node, so running one needs a reachable **Kafka broker** (defaults to
-`localhost`; point elsewhere with `--host` / `-H` or the `$CALF_HOST_URL` env var). Serve a tool
+`localhost`; point elsewhere with `--host` / `-H` or the `$CALFKIT_MESH_URL` env var). Serve a tool
 on the mesh with the `calfkit run` dev command:
 
 ```bash

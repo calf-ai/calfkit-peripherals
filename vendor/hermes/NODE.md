@@ -11,7 +11,7 @@ tenancy: ADR-0004.
 from calfkit import Client, Worker
 from calfkit_tools.hermes.node import terminal, HERMES_NODES
 
-client = Client.connect("localhost:9092")          # or env CALF_HOST_URL
+client = Client.connect("localhost:9092")          # or env CALFKIT_MESH_URL
 await Worker(client, nodes=[terminal]).run()       # one tool = one node
 # or host them all in one Worker (still one node per tool, not a proxy):
 await Worker(client, nodes=HERMES_NODES).run()
