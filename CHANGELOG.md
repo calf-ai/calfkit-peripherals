@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.3](https://github.com/calf-ai/calfkit-peripherals/compare/v0.1.2...v0.1.3) (2026-06-29)
+
+
+### Features
+
+* support calfkit 0.12, widen pin to &gt;=0.9.0,&lt;0.13 ([#14](https://github.com/calf-ai/calfkit-peripherals/issues/14)) ([1a96087](https://github.com/calf-ai/calfkit-peripherals/commit/1a960872954309182d289dcde2689e8d4a200070))
+
+
+### Documentation
+
+* rename CALF_HOST_URL env var to CALFKIT_MESH_URL ([ef7e7e3](https://github.com/calf-ai/calfkit-peripherals/commit/ef7e7e3f006f1cb40f4d769c58e423de81af5f30))
+* rename calfkit CLI command to ck ([2f0910e](https://github.com/calf-ai/calfkit-peripherals/commit/2f0910e5f5256a28135ac9d1abb6a8e8eb895f02))
+* Update README.md ([d2894c3](https://github.com/calf-ai/calfkit-peripherals/commit/d2894c320071ee69ce4be397c21c4ffa904ebd58))
+* Update README.md badge ([be6beab](https://github.com/calf-ai/calfkit-peripherals/commit/be6beab3949835f567cdb2edc275f8586819ab72))
+
 ## [0.1.2](https://github.com/calf-ai/calfkit-peripherals/compare/v0.1.1...v0.1.2) (2026-06-17)
 
 
