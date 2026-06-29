@@ -339,12 +339,15 @@ class TestModuleImport:
 
 class TestSchema:
     def test_web_search_node_id_and_params(self):
-        assert web_search_node.node_id == "tool_web_search"
+        # calfkit derives the node_id from the tool name; 0.12 dropped the
+        # historical ``tool_`` prefix (topics stay ``tool.<name>.*``). Accept
+        # both so the supported range (calfkit >=0.9,<0.13) stays green.
+        assert web_search_node.node_id in ("web_search", "tool_web_search")
         props = web_search_node.tool_schema.parameters_json_schema["properties"]
         assert "query" in props
         assert "limit" in props
 
     def test_web_extract_node_id_and_params(self):
-        assert web_extract_node.node_id == "tool_web_extract"
+        assert web_extract_node.node_id in ("web_extract", "tool_web_extract")
         props = web_extract_node.tool_schema.parameters_json_schema["properties"]
         assert "urls" in props

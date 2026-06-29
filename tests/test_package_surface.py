@@ -8,18 +8,29 @@ neither per-source sub-suite (each of those tests only its own source in isolati
 import subprocess
 import sys
 
-EXPECTED_HERMES_NODE_IDS = {
-    "tool_terminal",
-    "tool_process",
-    "tool_execute_code",
-    "tool_read_file",
-    "tool_write_file",
-    "tool_patch",
-    "tool_search_files",
-    "tool_todo",
-    "tool_web_search",
-    "tool_web_extract",
+EXPECTED_HERMES_TOOL_NAMES = {
+    "terminal",
+    "process",
+    "execute_code",
+    "read_file",
+    "write_file",
+    "patch",
+    "search_files",
+    "todo",
+    "web_search",
+    "web_extract",
 }
+
+
+def _tool_name(node_id: str) -> str:
+    """The tool name calfkit derives the node_id from.
+
+    calfkit 0.12 dropped the historical ``tool_`` node-id prefix (topics stay
+    ``tool.<name>.*``). Stripping the optional prefix lets this surface contract
+    hold across the supported calfkit range (>=0.9,<0.13). No tool name itself
+    begins with ``tool_``, so the strip is unambiguous.
+    """
+    return node_id.removeprefix("tool_")
 
 
 def test_unified_namespace_exposes_both_sources():
@@ -27,8 +38,8 @@ def test_unified_namespace_exposes_both_sources():
     from calfkit_tools.web_fetch.node import web_fetch
 
     assert len(HERMES_NODES) == 10
-    assert {n.node_id for n in HERMES_NODES} == EXPECTED_HERMES_NODE_IDS
-    assert web_fetch.node_id == "tool_web_fetch"
+    assert {_tool_name(n.node_id) for n in HERMES_NODES} == EXPECTED_HERMES_TOOL_NAMES
+    assert _tool_name(web_fetch.node_id) == "web_fetch"
 
 
 def test_no_node_id_collision_across_sources():

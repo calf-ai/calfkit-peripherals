@@ -233,6 +233,15 @@ wheels = [
 ]
 
 [[package]]
+name = "annotated-doc"
+version = "0.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/57/ba/046ceea27344560984e26a590f90bc7f4a75b06701f653222458922b558c/annotated_doc-0.0.4.tar.gz", hash = "sha256:fbcda96e87e9c92ad167c2e53839e57503ecfda18804ea28102353485033faa4", size = 7288, upload-time = "2025-11-10T22:07:42.062Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/d3/26bf1008eb3d2daa8ef4cacc7f3bfdc11818d111f7e2d0201bc6e3b49d45/annotated_doc-0.0.4-py3-none-any.whl", hash = "sha256:571ac1dc6991c450b25a9c2d84a3705e2ae7a53467b5d111c24fa8baabbed320", size = 5303, upload-time = "2025-11-10T22:07:40.673Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -430,7 +439,7 @@ wheels = [
 
 [[package]]
 name = "calfkit"
-version = "0.10.0"
+version = "0.12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anthropic" },
@@ -447,18 +456,20 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-graph" },
     { name = "python-dotenv" },
+    { name = "typer" },
     { name = "typing-extensions" },
     { name = "typing-inspection" },
     { name = "uuid-utils" },
+    { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ea/00/a4579fb5ba48523749b6bf36181586c733a535dceddcf12357f89fc887c5/calfkit-0.10.0.tar.gz", hash = "sha256:143483a92ac6ac5a0169a9d631545009136c6c9cd0c78aaa4458d402600dcf9c", size = 864474, upload-time = "2026-06-13T04:27:40.673Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/58/4d4777d46b2aa2c193765714fcf6ff5278b4a14477f0cd213e4d2adf5b4e/calfkit-0.12.1.tar.gz", hash = "sha256:87bf4e33d06c9305ad03a45adfb2c9e73f0f2347ae0da282759910675469b244", size = 1529176, upload-time = "2026-06-29T07:09:09.041Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/7f/efccf48ac35861567265a2eebc73e0d485c200284b9a1b608054433086d5/calfkit-0.10.0-py3-none-any.whl", hash = "sha256:60c1acb548371e062d1a41ebd0d377c7658fc982c7b637314908eed5e769e23c", size = 651628, upload-time = "2026-06-13T04:27:38.654Z" },
+    { url = "https://files.pythonhosted.org/packages/09/bd/9c957d608de6d87fae39b0c8068c23b5596b7db979c9d9b828d47ba7dae7/calfkit-0.12.1-py3-none-any.whl", hash = "sha256:a9542e77ac3933c6006a05f8b10b8e7b4b176fa9f7b6a6102f80062afe8eba0e", size = 764465, upload-time = "2026-06-29T07:09:07.023Z" },
 ]
 
 [[package]]
 name = "calfkit-tools"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "calfkit" },
@@ -501,7 +512,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "calfkit", specifier = ">=0.9.0,<0.11" },
+    { name = "calfkit", specifier = ">=0.9.0,<0.13" },
     { name = "calfkit-tools", extras = ["shell-docker", "shell-modal", "shell-daytona"], marker = "extra == 'all'" },
     { name = "daytona-sdk", marker = "extra == 'shell-daytona'" },
     { name = "ddgs" },
@@ -1149,7 +1160,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -1679,14 +1690,14 @@ wheels = [
 
 [[package]]
 name = "ktables"
-version = "0.1.2"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiokafka" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/23/b0/fb814958ab6d97d319e6a2a6cac8817058dab06a22fa10b50c4e40273a76/ktables-0.1.2.tar.gz", hash = "sha256:a62bc10523ff419dee3a2b9e21d06cb965a687ea40ac35cdc76710549742d4e4", size = 40406, upload-time = "2026-06-10T08:56:13.085Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/6a/b03e928d0dd93ef8f59b3f336848176c9cda7133986ef5bfbdf101ba1661/ktables-1.0.0.tar.gz", hash = "sha256:0fbe474820cce7ef501decbb47da42fa152473fe49d7fec8ef42096d12999adf", size = 153752, upload-time = "2026-06-23T23:36:27.847Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/ad/9bc3ebf3e5e14da0ca5367aadaae746e98337ce79802999496a4643b8595/ktables-0.1.2-py3-none-any.whl", hash = "sha256:aaccc3361cebe17bfb1dfd4b04b7bd1f5525c9cd9c6f70236fa3283fcd48ac2d", size = 13444, upload-time = "2026-06-10T08:56:11.827Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/b8/ace4ff179e0ee8e05dcc7d5c71fc44c135c646d2772f16dca625a249e8ab/ktables-1.0.0-py3-none-any.whl", hash = "sha256:a6dfd18e2eda29efa5274a337a36a517fb71fb584af3ef02da77babac0c614ba", size = 27661, upload-time = "2026-06-23T23:36:26.787Z" },
 ]
 
 [[package]]
@@ -3357,6 +3368,15 @@ wheels = [
 ]
 
 [[package]]
+name = "shellingham"
+version = "1.5.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3512,6 +3532,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/a3/1585216310e344e8102c22482f6060c7a6ea0322b63e026372e6dcefcfd6/truststore-0.10.4.tar.gz", hash = "sha256:9d91bd436463ad5e4ee4aba766628dd6cd7010cf3e2461756b3303710eebc301", size = 26169, upload-time = "2025-08-12T18:49:02.73Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/19/97/56608b2249fe206a67cd573bc93cd9896e1efb9e98bce9c163bcdc704b88/truststore-0.10.4-py3-none-any.whl", hash = "sha256:adaeaecf1cbb5f4de3b1959b42d41f6fab57b2b1666adb59e89cb0b53361d981", size = 18660, upload-time = "2025-08-12T18:49:01.46Z" },
+]
+
+[[package]]
+name = "typer"
+version = "0.26.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "rich" },
+    { name = "shellingham" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7c/f7/68adc395201b20b872d68e975386832e8005ffeacedd43a1d837a32815be/typer-0.26.8.tar.gz", hash = "sha256:c244a6bd558886fe3f8780efb6bdd28bb9aff005a94eedebaa5cb32926fe2f7e", size = 202097, upload-time = "2026-06-26T09:22:45.705Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/87/b9fd69c92c6102a066e1b86a35243f53e70bd4c709f2a26d9f4fee4f4dc0/typer-0.26.8-py3-none-any.whl", hash = "sha256:3512ca79ac5c11113414b36e80281b872884477722440691c89d1112e321a49c", size = 122564, upload-time = "2026-06-26T09:22:44.72Z" },
 ]
 
 [[package]]

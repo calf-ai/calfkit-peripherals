@@ -222,7 +222,10 @@ class TestResourceHook:
 
 class TestSchema:
     def test_node_id(self):
-        assert todo.node_id == "tool_todo"
+        # calfkit derives the node_id from the tool name; 0.12 dropped the
+        # historical ``tool_`` prefix (topics stay ``tool.<name>.*``). Accept
+        # both so the supported range (calfkit >=0.9,<0.13) stays green.
+        assert todo.node_id in ("todo", "tool_todo")
 
     def test_params_expose_todos_and_merge(self):
         props = todo.tool_schema.parameters_json_schema["properties"]

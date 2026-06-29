@@ -69,7 +69,10 @@ class TestSchemaSanity:
         assert "ctx" not in schema_props(execute_code)
 
     def test_node_id_is_tool_name_derived(self):
-        assert execute_code.node_id == "tool_execute_code"
+        # calfkit derives the node_id from the tool name; 0.12 dropped the
+        # historical ``tool_`` prefix (topics stay ``tool.<name>.*``). Accept
+        # both so the supported range (calfkit >=0.9,<0.13) stays green.
+        assert execute_code.node_id in ("execute_code", "tool_execute_code")
 
 
 # --------------------------------------------------------------------------- #

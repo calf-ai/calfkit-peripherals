@@ -51,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         # Every supported Python (3.10-3.14) runs against the locked calfkit
-        # version (the ceiling 0.10.0, pinned in uv.lock). calfkit is not varied
+        # version (the ceiling 0.12.1, pinned in uv.lock). calfkit is not varied
         # across the matrix — the node glue uses only the stable SDK surface
         # (ToolContext / agent_tool / ToolNodeDef). Bump this list when the
         # supported Python range moves.

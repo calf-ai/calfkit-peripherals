@@ -18,8 +18,11 @@ await Worker(client, nodes=HERMES_NODES).run()
 # or: ck run calfkit_tools.hermes.node:terminal
 ```
 
-Topics are calfkit name-derived: `tool.<name>.input` / `tool.<name>.output`,
-node id `tool_<name>`. An agent attaches a node with
+Topics are calfkit name-derived and stable across the supported calfkit range:
+`tool.<name>.input` / `tool.<name>.output`. The node id is the calfkit-derived
+tool name — `<name>` on calfkit ≥ 0.12, `tool_<name>` on earlier supported
+releases (0.12 dropped the historical `tool_` prefix; the topics above are
+unchanged). An agent attaches a node with
 `Agent(..., tools=[terminal])` — it needs only the schema + topic, not this
 package's implementation.
 
