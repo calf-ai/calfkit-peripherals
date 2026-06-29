@@ -6,7 +6,7 @@
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/calf-ai/calfkit-peripherals/python-coverage-comment-action-data/endpoint.json)](https://github.com/calf-ai/calfkit-peripherals/tree/python-coverage-comment-action-data)
 [![License: Apache-2.0 AND MIT](https://img.shields.io/badge/License-Apache--2.0%20AND%20MIT-blue.svg)](https://github.com/calf-ai/calfkit-peripherals/blob/main/LICENSE)
 
-Agent tools for the [calfkit](https://github.com/calf-ai/calfkit-sdk) SDK — shell, files, code, web, and todo — each deployable as a tool node.
+Tools for [calfkit](https://github.com/calf-ai/calfkit-sdk) agents — shell, files, code, web, and todo — each deployable as a tool node.
 
 [calfkit](https://github.com/calf-ai/calfkit-sdk) is an SDK for building AI agents as
 distributed, event-driven microservices over Kafka. `calfkit-tools` gives those agents a
