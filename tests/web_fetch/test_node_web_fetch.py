@@ -85,7 +85,10 @@ def test_node_is_tool_node_def():
 
 
 def test_node_id_and_topics():
-    assert web_fetch.node_id == "tool_web_fetch"
+    # calfkit derives the node_id from the tool name; 0.12 dropped the historical
+    # ``tool_`` prefix. The topics are the stable wire contract and are unchanged
+    # across the supported range (calfkit >=0.9,<0.13).
+    assert web_fetch.node_id in ("web_fetch", "tool_web_fetch")
     assert web_fetch.subscribe_topics == ["tool.web_fetch.input"]
     assert web_fetch.publish_topic == "tool.web_fetch.output"
 

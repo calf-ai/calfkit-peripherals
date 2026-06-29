@@ -77,8 +77,9 @@ so the fork is re-appliable on re-sync.
 ## Kafka framing (Stage D — implemented)
 
 The node is `calfkit_tools.web_fetch.node.web_fetch`, a calfkit
-`ToolNodeDef` built with `@agent_tool` (calfkit ≥ 0.9.0): node id
-`tool_web_fetch`, topics `tool.web_fetch.input` / `tool.web_fetch.output`,
+`ToolNodeDef` built with `@agent_tool` (calfkit ≥ 0.9.0): node id is the
+calfkit-derived tool name (`web_fetch` on calfkit ≥ 0.12, `tool_web_fetch` on
+earlier supported releases), topics `tool.web_fetch.input` / `tool.web_fetch.output`,
 JSON envelope, schema derived from the function signature (`url: str`,
 required, the only field — matching the §7 contract above). Stateless: no
 tenancy key, scales horizontally.

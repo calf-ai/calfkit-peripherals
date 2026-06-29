@@ -11,9 +11,10 @@ roll-up index.
 
 ## Common contract (all nodes)
 
-- **Type:** calfkit `ToolNodeDef` (calfkit `>=0.9.0,<0.11`), one node per tool.
-- **Identity:** node id `tool_<name>`; topics `tool.<name>.input` /
-  `tool.<name>.output` (calfkit name-derived).
+- **Type:** calfkit `ToolNodeDef` (calfkit `>=0.9.0,<0.13`), one node per tool.
+- **Identity:** node id is the calfkit-derived tool name (`<name>` on calfkit
+  ≥ 0.12, `tool_<name>` on earlier supported releases); topics `tool.<name>.input` /
+  `tool.<name>.output` are calfkit name-derived and stable across the range.
 - **Envelope:** JSON. Arguments are validated against the schema derived from
   the function signature below; the leading `ctx` parameter is internal and
   not part of the LLM-facing schema.

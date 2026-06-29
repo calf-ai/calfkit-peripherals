@@ -65,10 +65,13 @@ class TestSchemaSanity:
     minus the auto-hidden ctx). Catches signature drift from upstream."""
 
     def test_node_ids_are_tool_name_derived(self):
-        assert read_file.id == "tool_read_file"
-        assert write_file.id == "tool_write_file"
-        assert patch.id == "tool_patch"
-        assert search_files.id == "tool_search_files"
+        # calfkit derives the node id from the tool name; 0.12 dropped the
+        # historical ``tool_`` prefix (topics stay ``tool.<name>.*``). Accept
+        # both so the supported range (calfkit >=0.9,<0.13) stays green.
+        assert read_file.id in ("read_file", "tool_read_file")
+        assert write_file.id in ("write_file", "tool_write_file")
+        assert patch.id in ("patch", "tool_patch")
+        assert search_files.id in ("search_files", "tool_search_files")
 
     def test_read_file_schema(self):
         schema = params_schema(read_file)

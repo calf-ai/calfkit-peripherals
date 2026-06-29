@@ -37,7 +37,7 @@ A couple of test markers are excluded from normal runs (see `pyproject.toml`):
 Skip them locally with `-m "not live and not integration"`.
 
 CI tests against both the floor and ceiling of the supported `calfkit` range (currently
-`>=0.9.0,<0.11`), so keep the node glue limited to the stable surface (`ToolContext`,
+`>=0.9.0,<0.13`), so keep the node glue limited to the stable surface (`ToolContext`,
 `agent_tool`, `ToolNodeDef`).
 
 ## Adding a tool source
