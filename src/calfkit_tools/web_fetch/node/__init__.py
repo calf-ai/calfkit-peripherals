@@ -12,9 +12,10 @@ from __future__ import annotations
 import base64
 
 from calfkit import agent_tool
+from calfkit._vendor.pydantic_ai.exceptions import ModelRetry
 
 from calfkit_tools.web_fetch._vendor.common_tools.web_fetch import WebFetchLocalTool
-from calfkit_tools.web_fetch.results import FetchedBinary
+from calfkit_tools.web_fetch.results import FetchedBinary, WebFetchError
 
 __all__ = ["web_fetch"]
 
@@ -46,7 +47,10 @@ async def web_fetch(url: str) -> dict:
         and the `content` as markdown. For binary content, a dict with `data_base64` (the
         base64-encoded body) and its `media_type`.
     """
-    result = await _ENGINE(url)
+    try:
+        result = await _ENGINE(url)
+    except WebFetchError as exc:
+        raise ModelRetry(str(exc)) from exc
 
     if isinstance(result, FetchedBinary):
         return {
