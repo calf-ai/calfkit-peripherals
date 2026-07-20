@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.4](https://github.com/calf-ai/calfkit-peripherals/compare/v0.1.3...v0.1.4) (2026-07-20)
+
+
+### Features
+
+* support calfkit 0.13, widen pin to &gt;=0.9.0,&lt;0.14 ([#17](https://github.com/calf-ai/calfkit-peripherals/issues/17)) ([4c60662](https://github.com/calf-ai/calfkit-peripherals/commit/4c606625173af4354dd6808d747f97ac584e7019))
+
+
+### Bug Fixes
+
+* make web fetch failures recoverable ([#16](https://github.com/calf-ai/calfkit-peripherals/issues/16)) ([f5c44d8](https://github.com/calf-ai/calfkit-peripherals/commit/f5c44d8d1213d347a4ceea8430b0db34ba6939b2))
+
 ## [0.1.3](https://github.com/calf-ai/calfkit-peripherals/compare/v0.1.2...v0.1.3) (2026-06-29)
 
 
