@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "calfkit-tools"
-version = "0.1.3"
+version = "0.1.4"
 description = "Agent tools for the calfkit SDK: shell, files, code execution, web search/fetch, and todo, each deployable as a calfkit tool node."
 readme = "README.md"
 requires-python = ">=3.10"
