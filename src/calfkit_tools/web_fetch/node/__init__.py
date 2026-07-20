@@ -50,6 +50,10 @@ async def web_fetch(url: str) -> dict:
     try:
         result = await _ENGINE(url)
     except WebFetchError as exc:
+        # The engine normalizes every fetch failure (SSRF-block, HTTP status, oversize,
+        # network/timeout) into WebFetchError. Re-raise as ModelRetry at the node boundary so
+        # calfkit's tool dispatch surfaces it to the model as a recoverable retry instead of
+        # faulting the whole agent turn.
         raise ModelRetry(str(exc)) from exc
 
     if isinstance(result, FetchedBinary):
