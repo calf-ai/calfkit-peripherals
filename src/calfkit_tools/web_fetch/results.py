@@ -17,8 +17,8 @@ class WebFetchError(Exception):
     """Raised when a fetch fails (SSRF-blocked, HTTP error, bad URL, oversize, ...).
 
     A neutral first-party stand-in for upstream ``ModelRetry`` (§4/§5). The vendored engine
-    raises it instead of ``pydantic_ai.exceptions.ModelRetry``; the calfkit node maps it (and
-    the other typed errors the guard raises) to the ``error:`` reply.
+    raises it instead of ``pydantic_ai.exceptions.ModelRetry``; the calfkit node re-raises it as
+    ``ModelRetry`` at the boundary, which calfkit surfaces to the model as a recoverable retry.
     """
 
 

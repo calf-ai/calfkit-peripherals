@@ -9,8 +9,8 @@ import httpx
 import pytest
 from calfkit.nodes.tool import ToolNodeDef
 
+from calfkit_tools.exceptions import ModelRetry
 from calfkit_tools.web_fetch.node import _ENGINE, web_fetch
-from calfkit_tools.web_fetch.results import WebFetchError
 
 # Patch target for the guard's HTTP client factory — the vendor's documented patch point
 # (see tests/test_ssrf.py `mock_ssrf_client`). Driving the node through this seam (rather than
@@ -151,14 +151,14 @@ async def test_binary_path_returns_base64_dict():
 # ---------------------------------------------------------------------------
 
 
-async def test_ssrf_blocked_url_raises_web_fetch_error():
+async def test_ssrf_blocked_url_raises_model_retry():
     # 169.254.169.254 is the cloud-metadata IP — blocked even with allow_local, and the engine
     # is configured allow_local_urls=False, so a literal-IP fetch is rejected by the guard.
-    with pytest.raises(WebFetchError):
+    with pytest.raises(ModelRetry, match="Failed to fetch"):
         await _fetch("http://169.254.169.254/latest/meta-data/")
 
 
-async def test_http_error_propagates_as_web_fetch_error():
+async def test_http_error_propagates_as_model_retry():
     with patch(
         "calfkit_tools.web_fetch._vendor.common_tools.web_fetch.safe_download",
         new_callable=AsyncMock,
@@ -168,7 +168,7 @@ async def test_http_error_propagates_as_web_fetch_error():
             response=httpx.Response(404, request=httpx.Request("GET", "https://example.com/missing")),
         ),
     ):
-        with pytest.raises(WebFetchError):
+        with pytest.raises(ModelRetry, match="Failed to fetch"):
             await _fetch("https://example.com/missing")
 
 
