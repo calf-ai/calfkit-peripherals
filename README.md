@@ -154,7 +154,7 @@ the dev setup and how to add a tool. Questions and bug reports are welcome at
 
 ## License
 
-[Apache-2.0](https://github.com/calf-ai/calfkit-peripherals/blob/main/LICENSE) © calf-ai. The
+Licensed under [Apache-2.0](https://github.com/calf-ai/calfkit-peripherals/blob/main/LICENSE). The
 distribution also bundles third-party components under the MIT license; see
 [`THIRD_PARTY_NOTICES.md`](https://github.com/calf-ai/calfkit-peripherals/blob/main/THIRD_PARTY_NOTICES.md)
 for the full attribution index. The combined SPDX expression is `Apache-2.0 AND MIT`.

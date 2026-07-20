@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local-only project docs (kept locally, not tracked)
+docs/adr/
+docs/design/
+docs/tools-research/
