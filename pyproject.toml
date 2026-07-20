@@ -131,6 +131,16 @@ exclude = ['(^|/)(_vendor|_shims)/']
 follow_imports = "silent"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# calfkit ships no ``py.typed`` marker, so it is an untyped dependency. A *deep* import from
+# ``calfkit._vendor.*`` (the recoverable ``ModelRetry``, which calfkit exposes nowhere public —
+# see calfkit_tools/exceptions.py) makes mypy resolve the package as source and then
+# flag its untyped top-level re-exports (``agent_tool``, ``ToolContext``, …) across every node.
+# Don't follow into calfkit — treat it as ``Any``, which is the de-facto state already and what
+# ``ignore_missing_imports`` intends for the shallow imports.
+module = ["calfkit", "calfkit.*"]
+follow_imports = "skip"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

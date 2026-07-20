@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-from calfkit._vendor.pydantic_ai.exceptions import ModelRetry
 from calfkit.nodes.tool import ToolNodeDef
 
+from calfkit_tools.exceptions import ModelRetry
 from calfkit_tools.web_fetch.node import _ENGINE, web_fetch
 
 # Patch target for the guard's HTTP client factory — the vendor's documented patch point

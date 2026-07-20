@@ -12,8 +12,8 @@ from __future__ import annotations
 import base64
 
 from calfkit import agent_tool
-from calfkit._vendor.pydantic_ai.exceptions import ModelRetry
 
+from calfkit_tools.exceptions import ModelRetry
 from calfkit_tools.web_fetch._vendor.common_tools.web_fetch import WebFetchLocalTool
 from calfkit_tools.web_fetch.results import FetchedBinary, WebFetchError
 
@@ -51,9 +51,10 @@ async def web_fetch(url: str) -> dict:
         result = await _ENGINE(url)
     except WebFetchError as exc:
         # The engine normalizes every fetch failure (SSRF-block, HTTP status, oversize,
-        # network/timeout) into WebFetchError. Re-raise as ModelRetry at the node boundary so
-        # calfkit's tool dispatch surfaces it to the model as a recoverable retry instead of
-        # faulting the whole agent turn.
+        # network/timeout) into WebFetchError. Re-raise as the public `ModelRetry` (from
+        # calfkit_tools.exceptions) so calfkit's tool dispatch surfaces it to the model as a
+        # recoverable retry instead of faulting the whole agent turn; the original error stays
+        # on `__cause__`.
         raise ModelRetry(str(exc)) from exc
 
     if isinstance(result, FetchedBinary):
